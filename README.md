@@ -32,16 +32,16 @@ day | part |    time | rayon | user
  13 |    2 |    1205 |    no | giooschi
  14 |    1 |    1942 |    no | giooschi
  14 |    2 |    1183 |    no | giooschi
- 15 |    1 |   13062 |   yes | alion02
- 15 |    2 |   18900 |   yes | alion02
- 16 |    1 |   23594 |   yes | alion02
+ 15 |    1 |   13062 |    no | alion02
+ 15 |    2 |   18900 |    no | alion02
+ 16 |    1 |   23594 |    no | alion02
  16 |    2 |   35869 |    no | giooschi
- 17 |    1 |       7 |   yes | alion02
- 17 |    2 |       0 |   yes | alion02
- 18 |    1 |    1949 |   yes | alion02
+ 17 |    1 |       7 |    no | alion02
+ 17 |    2 |       0 |    no | alion02
+ 18 |    1 |    1949 |    no | alion02
  18 |    2 |    8187 |    no | caavik
- 19 |    1 |   28859 |   yes | alion02
- 19 |    2 |   51921 |   yes | __main_character__
+ 19 |    1 |   28859 |    no | alion02
+ 19 |    2 |   51921 |   ??? | __main_character__
  20 |    1 |    9147 |    no | giooschi
  20 |    2 |   64162 |   yes | giooschi
  21 |    1 |       1 |    no | bendn
