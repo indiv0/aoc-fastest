@@ -18,7 +18,7 @@ day | part |    time | rayon | user
   6 |    2 |   94170 |   yes | giooschi
   7 |    1 |   19841 |    no | giooschi
   7 |    2 |   30624 |    no | giooschi
-  8 |    1 |     552 |    no | giooschi
+  8 |    1 |     522 |    no | giooschi
   8 |    2 |    1326 |    no | giooschi
   9 |    1 |   12472 |    no | giooschi
   9 |    2 |   32345 |    no | ameo
@@ -54,6 +54,21 @@ day | part |    time | rayon | user
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1212455ns
+             1212435ns
 ```
 for a total of 1.21ms or 644us excluding d22p2!
+
+# Credits
+
+This repo contains code/optimizations from the following authors:
+
+- giooschi/skifire13: https://github.com/SkiFire13
+- alion02: https://github.com/alion02
+
+Thank you so much to these talented individuals for participating in AoC with us!
+I highly encourage you to checkout their repos for more details and examples.
+These users are incredibly talented at what they do.
+Thank you to everyone who particpated as well, even if your submissions did not end up on the top spots of the leaderboard!
+
+This repo contains code submitted to the https://github.com/indiv0/ferris-elf bot, by multiple users.
+Code is only included in this repo if the authors have explicitly provided permission to post their code here, so some solutions may not be present.
