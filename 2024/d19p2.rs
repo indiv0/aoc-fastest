@@ -1,198 +1,155 @@
-// Originally by: __main_character__
+// Original by: giooschi
+#![allow(unused_attributes)]
+#![allow(static_mut_refs)]
+#![feature(portable_simd)]
+#![feature(avx512_target_feature)]
+#![feature(slice_ptr_get)]
+#![feature(array_ptr_get)]
+#![feature(core_intrinsics)]
+#![feature(int_roundings)]
+
+use std::arch::x86_64::*;
+use std::simd::prelude::*;
+
 use rayon::prelude::*;
-use std::error::Error;
-use std::fmt::Display;
 
-type NodeInt = u16;
-
-// My input leads to 795 trie nodes
-const MAX_NODES: usize = 896;
-
-pub fn run(input: &str) -> impl Display {
-    let (a, b) = parse_input(input).unwrap();
-    part_two(&a, &b)
+pub fn run(input: &str) -> i64 {
+    part2(input) as i64
 }
 
-pub fn parse_input(input: &str) -> Result<(Vec<&str>, Vec<&str>), Box<dyn Error>> {
-    let mut input = input;
-    let mut bytes = input.as_bytes();
+#[inline(always)]
+pub fn part2(input: &str) -> u64 {
+    unsafe { inner_part2(input) }
+}
 
-    let mut patterns = Vec::with_capacity(460);
-    'all: while !bytes.is_empty() {
-        for idx in 0..bytes.len() {
-            match bytes[idx] {
-                b',' => {
-                    patterns.push(&input[..idx]);
-                    input = &input[idx + 2..];
-                    bytes = &bytes[idx + 2..];
-                    break;
-                }
+static LUT: [usize; 128] = {
+    let mut lut = [usize::MAX; 128];
+    lut[b'r' as usize] = 0;
+    lut[b'g' as usize] = 1;
+    lut[b'b' as usize] = 2;
+    lut[b'u' as usize] = 3;
+    lut[b'w' as usize] = 4;
+    lut
+};
 
-                b'\n' => {
-                    patterns.push(&input[..idx]);
-                    input = &input[idx + 2..];
-                    bytes = &bytes[idx + 2..];
-                    break 'all;
-                }
-                _ => {}
+"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
+"avx512vl""))]
+unsafe fn inner_part2(input: &str) -> u64 {
+    let input = input.as_bytes();
+
+    let mut tries = [[0u16; 5]; 1024];
+    let mut tries_end = [false; 1024];
+    let mut tries_len = 1;
+
+    let mut ptr = input.as_ptr();
+    loop {
+        let n = ptr.cast::<u64>().read_unaligned();
+        let mask = _pext_u64(n, u64::from_ne_bytes([0b00001000; 8]) | (1 << 62));
+        let len = mask.trailing_zeros();
+        let end = ptr.add(len as usize);
+
+        let mut trie = 0;
+        loop {
+            // let i = _pext_u64(*ptr as u64 + 13, 0b10010010) - 1;
+            let i = *LUT.get_unchecked(*ptr as usize);
+
+            let mut next = *tries.get_unchecked(trie).get_unchecked(i as usize);
+            if next == 0 {
+                next = tries_len;
+                tries_len += 1;
             }
-        }
-    }
+            *tries.get_unchecked_mut(trie).get_unchecked_mut(i as usize) = next;
+            trie = next as usize;
 
-    let mut towels = Vec::with_capacity(410);
-    while !bytes.is_empty() {
-        let p = memchr::memchr(b'\n', bytes).unwrap();
-        towels.push(&input[..p]);
-
-        input = &input[p + 1..];
-        bytes = &bytes[p + 1..];
-    }
-
-    Ok((patterns, towels))
-}
-//
-// pub fn part_one(patterns: &[&str], lines: &[&str]) -> usize {
-//     let mut trie = [([0; 5], false); MAX_NODES];
-//     let mut node_ptr = 0;
-//
-//     patterns
-//         .into_iter()
-//         .for_each(|&pattern| insert(&mut trie, &mut node_ptr, pattern.as_bytes()));
-//
-//     lines
-//         .chunks(25)
-//         .par_bridge()
-//         .map(|chunk| {
-//             chunk
-//                 .iter()
-//                 .filter(|t| contains(&trie, t.as_bytes(), &mut 0))
-//                 .count()
-//         })
-//         .sum()
-// }
-//
-// fn contains(trie: &[([NodeInt; 5], bool)], word: &[u8], failed: &mut u64) -> bool {
-//     let mut node = 0;
-//
-//     for (idx, &ch) in word.iter().enumerate() {
-//         let key = index(ch);
-//
-//         let next = trie[node].0[key] as usize;
-//         if next == 0 {
-//             return false;
-//         }
-//
-//         node = next;
-//         if trie[node].1 {
-//             let remaining = &word[idx + 1..];
-//             if remaining.is_empty() {
-//                 return true;
-//             }
-//
-//             let bit = remaining.len() - 1;
-//             if *failed & (1 << bit) != 0 {
-//                 continue;
-//             }
-//
-//             if contains(trie, remaining, failed) {
-//                 return true;
-//             }
-//
-//             *failed |= 1 << bit;
-//         }
-//     }
-//
-//     false
-// }
-
-pub fn part_two(patterns: &[&str], lines: &[&str]) -> u64 {
-    let mut trie = [[0; 6]; MAX_NODES];
-    let mut node_ptr = 0;
-
-    patterns
-        .into_iter()
-        .for_each(|&pattern| insert(&mut trie, &mut node_ptr, pattern.as_bytes()));
-
-    lines
-        .chunks(25)
-        .par_bridge()
-        .map(|l| {
-            let mut sum = 0;
-            for &x in l {
-                let mut counts = [-1; 64];
-                sum += contains_ways(&trie, x.as_bytes(), &mut counts)
-            }
-
-            sum
-        })
-        .sum::<i64>() as u64
-}
-
-fn contains_ways(trie: &[[NodeInt; 6]], word: &[u8], cache: &mut [i64]) -> i64 {
-    let mut node = 0;
-    let mut ways = 0;
-
-    for (idx, &ch) in word.iter().enumerate() {
-        let key = index(ch);
-
-        let next = trie[node][key] as usize;
-        if next == 0 {
-            break;
-        }
-
-        node = next;
-        if trie[node][5] != 0 {
-            let remaining = &word[idx + 1..];
-            if remaining.is_empty() {
-                ways += 1;
+            ptr = ptr.add(1);
+            if ptr == end {
                 break;
             }
+        }
 
-            ways += if cache[remaining.len()] >= 0 {
-                cache[remaining.len()]
-            } else {
-                contains_ways(trie, remaining, cache)
-            };
+        *tries_end.get_unchecked_mut(trie) = true;
+
+        ptr = ptr.add(2);
+        if *ptr.sub(2) == b'\n' {
+            break;
         }
     }
 
-    cache[word.len()] = ways;
-    ways
-}
-
-fn insert(trie: &mut [[NodeInt; 6]], last_node: &mut NodeInt, word: &[u8]) {
-    let mut node = 0;
-
-    for &ch in word {
-        let key = index(ch);
-
-        if trie[node][key] == 0 {
-            *last_node += 1;
-            trie[node][key] = *last_node;
+    let mut lines = [0; 400];
+    let mut lines_len = 0;
+    let mut offset = ptr.offset_from(input.as_ptr()) as usize - 1;
+    while offset + 32 < input.len() {
+        let b = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
+        let mut m = b.simd_eq(u8x32::splat(b'\n')).to_bitmask();
+        while m != 0 {
+            let pos = m.trailing_zeros();
+            m &= !(1 << pos);
+            *lines.get_unchecked_mut(lines_len) = offset + pos as usize + 1;
+            lines_len += 1;
         }
-
-        node = trie[node][key] as usize;
+        offset += 32;
+    }
+    while offset + 1 < input.len() {
+        if *input.get_unchecked(offset) == b'\n' {
+            *lines.get_unchecked_mut(lines_len) = offset + 1;
+            lines_len += 1;
+        }
+        offset += 1;
     }
 
-    trie[node][5] = 1;
-}
+    lines
+        .par_chunks(400 / 16)
+        .with_max_len(1)
+        .map(|chunk| {
+            let mut count = 0;
 
-const fn index(ch: u8) -> usize {
-    ((((ch as usize & 31) * 7) >> 4) + 1) % 8
-}
+            for &offset in chunk {
+                let mut queue = [0; 64];
+                queue[0] = 1;
+                let mut pos = 0;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tests::PART_2_ANSWER;
-    use aoc_shared::input::load_text_input_from_file;
+                let base_ptr = input.as_ptr().add(offset);
+                let mut outer_ptr = base_ptr;
 
-    #[test]
-    fn test_part_two() {
-"inputs/input.txt"");
-        let (patterns, lines) = parse_input(&input).unwrap();
+                loop {
+                    let n = *queue.get_unchecked(pos);
 
-        let answer = part_two(&patterns, &lines);
-        assert_eq!(PART_2_ANSWER, answer);
-    }
+                    if n != 0 {
+                        let mut ptr = outer_ptr;
+                        let mut trie = 0;
+
+                        loop {
+                            let i = *LUT.get_unchecked(*ptr as usize);
+
+                            trie = *tries.get_unchecked(trie).get_unchecked(i) as usize;
+                            if trie == 0 {
+                                break;
+                            }
+                            debug_assert!(trie < tries.len());
+
+                            ptr = ptr.add(1);
+
+                            if *tries_end.get_unchecked(trie) {
+                                *queue.get_unchecked_mut(ptr.offset_from(base_ptr) as usize) += n;
+                            }
+
+                            if *ptr == b'\n' {
+                                break;
+                            }
+                        }
+                    }
+
+                    pos += 1;
+                    outer_ptr = outer_ptr.add(1);
+
+                    if *outer_ptr == b'\n' {
+                        count += *queue.get_unchecked(pos);
+                        break;
+                    }
+                }
+            }
+
+            count
+        })
+        .sum()
 }

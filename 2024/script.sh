@@ -19,7 +19,7 @@ get_and_save() {
 get_and_save  2 1   5002
 get_and_save  2 2   6949
 get_and_save  3 1   1676
-get_and_save  3 2   2097
+get_and_save  3 2   1468
 get_and_save  4 1   2259
 get_and_save  4 2    473
 get_and_save  5 1   3270
@@ -51,7 +51,7 @@ get_and_save 17 2      0
 get_and_save 18 1   1949
 get_and_save 18 2   8187
 get_and_save 19 1  28859
-get_and_save 19 2  51921
+get_and_save 19 2  29823
 get_and_save 20 1   9147
 get_and_save 20 2  64162
 #get_and_save 21 1      1

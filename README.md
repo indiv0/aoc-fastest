@@ -9,7 +9,7 @@ day | part |    time | rayon | user
   2 |    1 |    5002 |    no | giooschi
   2 |    2 |    6949 |    no | giooschi
   3 |    1 |    1676 |    no | alion02
-  3 |    2 |    2097 |    no | ameo
+  3 |    2 |    1468 |    no | ameo
   4 |    1 |    2259 |    no | giooschi
   4 |    2 |     473 |    no | giooschi
   5 |    1 |    3270 |    no | giooschi
@@ -36,16 +36,16 @@ day | part |    time | rayon | user
  15 |    2 |   18900 |    no | alion02
  16 |    1 |   23594 |    no | alion02
  16 |    2 |   35869 |    no | giooschi
- 17 |    1 |       7 |    no | alion02
+ 17 |    1 |       7 |    no | alion02/giooschi
  17 |    2 |       0 |    no | alion02
  18 |    1 |    1949 |    no | alion02
  18 |    2 |    8187 |    no | caavik
  19 |    1 |   28859 |    no | alion02
- 19 |    2 |   51921 |   yes | __main_character__
+ 19 |    2 |   29823 |   yes | giooschi
  20 |    1 |    9147 |    no | giooschi
  20 |    2 |   64162 |   yes | giooschi
- 21 |    1 |       1 |    no | bendn
- 21 |    2 |       1 |    no | bendn
+ 21 |    1 |       1 |    no | bendn/giooschi
+ 21 |    2 |       1 |    no | bendn/giooschi
  22 |    1 |    4728 |    no | giooschi
  22 |    2 |  568491 |   yes | giooschi
  23 |    1 |    6446 |    no | giooschi
@@ -54,9 +54,9 @@ day | part |    time | rayon | user
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1212435ns
+             1189728ns
 ```
-for a total of 1.21ms or 644us excluding d22p2!
+for a total of 1.19ms or 621us excluding d22p2!
 
 # Credits
 
