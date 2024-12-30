@@ -65,7 +65,7 @@ This repo contains code/optimizations from the following authors:
 - giooschi/skifire13: https://github.com/SkiFire13
 - alion02: https://github.com/alion02
 - caavik: https://github.com/CameronAavik
-- void*/\__main_character__
+- void*/\_\_main_character__
 
 Thank you so much to these talented individuals for participating in AoC with us!
 I highly encourage you to checkout their repos for more details and examples.
