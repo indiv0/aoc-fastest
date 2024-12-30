@@ -41,7 +41,7 @@ day | part |    time | rayon | user
  18 |    1 |    1949 |    no | alion02
  18 |    2 |    8187 |    no | caavik
  19 |    1 |   28859 |    no | alion02
- 19 |    2 |   51921 |   ??? | __main_character__
+ 19 |    2 |   51921 |   yes | __main_character__
  20 |    1 |    9147 |    no | giooschi
  20 |    2 |   64162 |   yes | giooschi
  21 |    1 |       1 |    no | bendn
