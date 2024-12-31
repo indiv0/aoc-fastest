@@ -28,7 +28,7 @@ get_and_save  7 1  19841
 get_and_save  7 2  30624
 get_and_save  8 1    522
 get_and_save  8 2   1326
-get_and_save  9 1  12472
+get_and_save  9 1  11203
 get_and_save  9 2  32345
 get_and_save 10 1  12095
 #get_and_save 10 2   3250
@@ -42,13 +42,13 @@ get_and_save 14 1   1942
 get_and_save 14 2   1183
 get_and_save 15 1  13062
 get_and_save 15 2  18900
-get_and_save 16 1  23594
+get_and_save 16 1  22524
 get_and_save 16 2  35869
 get_and_save 17 1      7
 get_and_save 17 2      0
 get_and_save 18 1   1949
 get_and_save 18 2   7749
-get_and_save 19 1  28859
+get_and_save 19 1  28829
 get_and_save 19 2  29823
 get_and_save 20 1   9147
 get_and_save 20 2  64162

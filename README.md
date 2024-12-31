@@ -20,7 +20,7 @@ day | part |    time | rayon | user
   7 |    2 |   30624 |    no | giooschi
   8 |    1 |     522 |    no | giooschi
   8 |    2 |    1326 |    no | giooschi
-  9 |    1 |   12472 |    no | giooschi
+  9 |    1 |   11203 |    no | alion02
   9 |    2 |   32345 |    no | ameo
  10 |    1 |   12095 |    no | giooschi
  10 |    2 |    3250 |    no | _mwlsk
@@ -34,13 +34,13 @@ day | part |    time | rayon | user
  14 |    2 |    1183 |    no | giooschi
  15 |    1 |   13062 |    no | alion02
  15 |    2 |   18900 |    no | alion02
- 16 |    1 |   23594 |    no | alion02
+ 16 |    1 |   22524 |    no | alion02
  16 |    2 |   35869 |    no | giooschi
  17 |    1 |       7 |    no | alion02/giooschi
  17 |    2 |       0 |    no | alion02
  18 |    1 |    1949 |    no | alion02
  18 |    2 |    7749 |    no | caavik
- 19 |    1 |   28859 |    no | alion02
+ 19 |    1 |   28829 |    no | alion02
  19 |    2 |   29823 |   yes | giooschi
  20 |    1 |    9147 |    no | giooschi
  20 |    2 |   64162 |   yes | giooschi
@@ -54,9 +54,9 @@ day | part |    time | rayon | user
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1047239ns
+             1044870ns
 ```
-for a total of 1.05ms!
+for a total of 1.04ms!
 
 # Credits
 
