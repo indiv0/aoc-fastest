@@ -4,8 +4,8 @@ here's the total of the fastest times for each day so far:
 ```
 day | part |    time | rayon | user
 --- | ---- | ------- | ----- | --------
-  1 |    1 |    5484 |    no | doge
-  1 |    2 |    2425 |    no | doge
+  1 |    1 |    9150 |    no | doge
+  1 |    2 |    4945 |    no | doge
   2 |    1 |    5002 |    no | giooschi
   2 |    2 |    6949 |    no | giooschi
   3 |    1 |    1676 |    no | alion02
@@ -54,9 +54,9 @@ day | part |    time | rayon | user
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1044870ns
+             1051056ns
 ```
-for a total of 1.04ms!
+for a total of 1.05ms!
 
 # Credits
 
@@ -67,6 +67,7 @@ This repo contains code/optimizations from the following authors:
 - caavik: https://github.com/CameronAavik
 - void*/\_\_main\_character\_\_
 - ameo https://github.com/Ameobea/advent-of-code-2024
+- doge
 
 Thank you so much to these talented individuals for participating in AoC with us!
 I highly encourage you to checkout their repos for more details and examples.

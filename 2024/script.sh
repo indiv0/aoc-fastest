@@ -12,8 +12,8 @@ get_and_save() {
   sqlite3 ${database} "${query}" | sed 's/\r$//' > d${day}p${part}.rs
 }
 
-#get_and_save  1 1   5484
-#get_and_save  1 2   2425
+get_and_save  1 1   9150
+get_and_save  1 2   4945
 get_and_save  2 1   5002
 get_and_save  2 2   6949
 get_and_save  3 1   1676
@@ -22,7 +22,7 @@ get_and_save  4 1   2259
 get_and_save  4 2    473
 get_and_save  5 1   3270
 get_and_save  5 2   5613
-#get_and_save  6 1   4643
+get_and_save  6 1   4643
 get_and_save  6 2  94170
 get_and_save  7 1  19841
 get_and_save  7 2  30624
