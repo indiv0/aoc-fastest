@@ -1,4 +1,4 @@
-// Original by: giooschi
+// Original by: caavik/giooschi
 #![allow(unused_attributes)]
 #![allow(static_mut_refs)]
 #![feature(portable_simd)]
