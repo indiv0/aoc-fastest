@@ -7,13 +7,13 @@ day | part |    time | rayon | user             | source available
   1 |    1 |    9150 |    no | doge             | yes
   1 |    2 |    4945 |    no | doge             | yes
   2 |    1 |    5002 |    no | giooschi         | yes
-  2 |    2 |    6949 |    no | giooschi         | yes
-  3 |    1 |    1676 |    no | alion02          | yes
+  2 |    2 |   15599 |    no | giooschi         | yes
+  3 |    1 |    1226 |    no | alion02          | yes
   3 |    2 |    1468 |    no | ameo             | yes
   4 |    1 |    2259 |    no | giooschi         | yes
   4 |    2 |     473 |    no | giooschi         | yes
   5 |    1 |    3270 |    no | giooschi         | yes
-  5 |    2 |    5613 |    no | giooschi         | yes
+  5 |    2 |    8036 |    no | giooschi         | yes
   6 |    1 |    4643 |    no | doge             | yes
   6 |    2 |   94170 |   yes | giooschi         | yes
   7 |    1 |   19841 |    no | giooschi         | yes
@@ -47,16 +47,16 @@ day | part |    time | rayon | user             | source available
  21 |    1 |       1 |    no | bendn/giooschi   | yes
  21 |    2 |       1 |    no | bendn/giooschi   | yes
  22 |    1 |    4728 |    no | giooschi         | yes
- 22 |    2 |  426440 |   yes | giooschi         | yes
+ 22 |    2 |  432796 |   yes | giooschi         | yes
  23 |    1 |    6446 |    no | giooschi         | yes
  23 |    2 |    4657 |    no | giooschi         | yes
  24 |    1 |     898 |    no | giooschi         | yes
  24 |    2 |     834 |    no | giooschi         | yes
  25 |    1 |    1436 |    no | giooschi         | yes
 ------------------------------------------------------------------
-             1051056ns
+             1068035ns
 ```
-for a total of 1.05ms!
+for a total of 1.07ms!
 
 # Credits
 

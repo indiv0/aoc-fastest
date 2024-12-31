@@ -6,22 +6,24 @@ get_and_save() {
   time=${3}
   database=../../ferris-elf/database.db
   query="select code from runs where day=${day} and part=${part} AND time=${time} limit 1;"
+  file="d${day}p${part}.rs"
   # Fetch code from DB;
   # Change newline to UNIX;
   # Save to file.
-  sqlite3 ${database} "${query}" | sed 's/\r$//' > d${day}p${part}.rs
+  sqlite3 ${database} "${query}" | sed 's/\r$//' > ${file}
+  rustfmt ${file}
 }
 
 get_and_save  1 1   9150
 get_and_save  1 2   4945
 get_and_save  2 1   5002
-get_and_save  2 2   6949
-get_and_save  3 1   1676
+get_and_save  2 2  15599
+get_and_save  3 1   1226
 get_and_save  3 2   1468
 get_and_save  4 1   2259
 get_and_save  4 2    473
 get_and_save  5 1   3270
-get_and_save  5 2   5613
+get_and_save  5 2   8036
 get_and_save  6 1   4643
 get_and_save  6 2  94170
 get_and_save  7 1  19841
@@ -55,7 +57,7 @@ get_and_save 20 2  64162
 #get_and_save 21 1      1
 #get_and_save 21 2      1
 get_and_save 22 1   4728
-get_and_save 22 2 426440
+get_and_save 22 2 432796
 get_and_save 23 1   6446
 get_and_save 23 2   4657
 get_and_save 24 1    898

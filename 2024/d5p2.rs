@@ -180,31 +180,28 @@ unsafe fn inner_part1(input: &str) -> u32 {
     let mut mask = 0u128;
 
     'outer: while iter.len() >= 72 {
-        buf_len = 0;
         mask = 0;
 
-        let len = 8 + u8x64::from_slice(iter.as_slice().get_unchecked(8..8 + 64))
+        let bytes_len = 9 + u8x64::from_slice(iter.as_slice().get_unchecked(8..8 + 64))
             .simd_eq(u8x64::splat(b'\n'))
             .first_set()
             .unwrap_unchecked();
+        buf_len = bytes_len / 3;
+        let mut rem = buf_len;
 
-        let mut c_iter = iter.as_slice().get_unchecked(..len + 1).iter();
+        let iter_next = iter.as_slice().get_unchecked(bytes_len..).iter();
 
-        iter = iter.as_slice().get_unchecked(len + 1..).iter();
-
-        while !c_iter.as_slice().is_empty() {
-            let c = c_iter.as_slice();
-
-            let n = (*c.get_unchecked(0) - b'0') * 10 + (*c.get_unchecked(1) - b'0');
-            *buf.get_unchecked_mut(buf_len) = n;
-            buf_len += 1;
-
-            if *rules.get_unchecked(n as usize) & mask != 0 {
-                continue 'outer;
+        while rem != 0 {
+            let last_idx = buf_len - rem;
+            parse11(&mut iter, buf.get_unchecked_mut(last_idx..), &mut rem);
+            for i in last_idx..buf_len - rem {
+                let n = *buf.get_unchecked(i);
+                if *rules.get_unchecked(n as usize) & mask != 0 {
+                    iter = iter_next;
+                    continue 'outer;
+                }
+                mask |= 1 << n;
             }
-
-            mask |= 1 << n;
-            c_iter = c_iter.as_slice().get_unchecked(3..).iter();
         }
 
         tot += *buf.get_unchecked(buf_len / 2) as u32;
