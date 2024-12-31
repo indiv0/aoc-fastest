@@ -14,6 +14,57 @@ use std::simd::prelude::*;
 
 use rayon::prelude::*;
 
+const WSIZE: usize = 16;
+const LEN: usize = (1 << 24) - 1 + 2000 + WSIZE;
+static mut NUM_TO_INDEX: [u32; 1 << 24] = [0; 1 << 24];
+static mut DIGITS: [u8; LEN] = [0; LEN];
+static mut LAST_SEEN: [u32; LEN] = [0; LEN];
+
+unsafe fn build_tables() {
+    let mut i = 0;
+    let mut n = 1;
+
+    static mut DIFF_TO_LAST_SEEN: [u32; 19 * 19 * 19 * 19] = [0; 19 * 19 * 19 * 19];
+
+    while i < LEN {
+        if i < (1 << 24) - 1 {
+            NUM_TO_INDEX[n] = i as u32;
+        }
+
+        DIGITS[i] = (n % 10) as u8;
+
+        if i >= 4 {
+            let d1 = DIGITS[i - 4] as usize;
+            let d2 = DIGITS[i - 3] as usize;
+            let d3 = DIGITS[i - 2] as usize;
+            let d4 = DIGITS[i - 1] as usize;
+            let d5 = DIGITS[i - 0] as usize;
+
+            let diff = [9 + d2 - d1, 9 + d3 - d2, 9 + d4 - d3, 9 + d5 - d4]
+                .into_iter()
+                .fold(0, |a, d| 19 * a + d);
+            LAST_SEEN[i] = DIFF_TO_LAST_SEEN[diff];
+            DIFF_TO_LAST_SEEN[diff] = i as u32;
+        }
+
+        n ^= (n << 6) & ((1 << 24) - 1);
+        n ^= n >> 5;
+        n ^= (n << 11) & ((1 << 24) - 1);
+
+        i += 1;
+    }
+}
+
+#[cfg_attr(any(target_os = "linux"), link_section = ".text.startup")]
+unsafe extern "C" fn __ctor() {
+    build_tables();
+}
+
+#[used]
+#[cfg_attr(target_os = "linux", link_section = ".init_array")]
+#[cfg_attr(windows, link_section = ".CRT$XCU")]
+static __CTOR: unsafe extern "C" fn() = __ctor;
+
 pub fn run(input: &str) -> i64 {
     part2(input) as i64
 }
@@ -92,23 +143,39 @@ unsafe fn inner_part2(input: &str) -> u64 {
         .zip(COUNTS.par_chunks_mut(NUM_SEQUENCES))
         .with_max_len(1)
         .for_each(|(chunk, counts)| {
-            let mut seen_sequences_bitset = vec![0; NUM_SEQUENCES];
-            let mut chunks = chunk.array_chunks::<8>();
+            for &c in chunk {
+                let idx = *NUM_TO_INDEX.get_unchecked(c as usize) as usize;
+                let mut curr = idx;
 
-            for (i, c) in chunks.by_ref().enumerate() {
-                if i != 0 {
-                    seen_sequences_bitset.fill(0);
+                macro_rules! handle {
+                    ($max:expr) => {{
+                        let digits = DIGITS.get_unchecked(curr..curr + WSIZE);
+                        let digits = Simd::<u8, WSIZE>::from_slice(digits);
+                        let d16 = digits.cast::<u16>();
+                        let nt = Simd::splat(19);
+                        let ntt = Simd::splat(19 * 19);
+                        let d1 = d16 - d16.rotate_elements_right::<1>();
+                        let ntd = d1 + nt * d1.rotate_elements_right::<1>();
+                        let nttd = ntd + ntt * ntd.rotate_elements_right::<2>();
+                        let diff = nttd + Simd::splat(19 * 19 * 19 * 9 + 19 * 19 * 9 + 19 * 9 + 9);
+
+                        let last = LAST_SEEN.get_unchecked(curr..curr + WSIZE);
+                        let last = Simd::<u32, WSIZE>::from_slice(last);
+                        let mask = last.simd_lt(Simd::splat(idx as u32 + 4));
+
+                        let to_sum = digits & mask.to_int().cast();
+
+                        for i in 4..$max {
+                            *counts.get_unchecked_mut(diff[i] as usize) += to_sum[i];
+                        }
+                    }};
                 }
-                process_part2_totals(&c, counts, &mut seen_sequences_bitset);
-            }
 
-            let rem = chunks.remainder();
-            if !rem.is_empty() {
-                seen_sequences_bitset.fill(0);
-
-                let mut remainder = [0; 8];
-                remainder[..rem.len()].copy_from_slice(rem);
-                process_part2_totals(&remainder, counts, &mut seen_sequences_bitset);
+                while curr + WSIZE <= idx + 2000 {
+                    handle!(WSIZE);
+                    curr += WSIZE - 4;
+                }
+                handle!(4 + (2000 - 4) % (WSIZE - 4) + 1);
             }
         });
 
@@ -128,65 +195,5 @@ unsafe fn inner_part2(input: &str) -> u64 {
     }
 
     max.reduce_max() as u64
-}
-
-#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
-unsafe fn process_part2_totals(
-    secrets: &[u32; 8],
-    sequence_totals: &mut [u8],
-    seen_sequences_bitset: &mut [u8],
-) {
-    let mut v = u32x8::from_array(*secrets);
-    let mut prev = v % u32x8::splat(10);
-    let mut history = u32x8::splat(0);
-
-    // First 3 iterations
-    for _ in 0..3 {
-        v = perform_operation(v);
-        let curr = v % u32x8::splat(10);
-        history = (history << 8) | (u32x8::splat(9) + curr - prev);
-        prev = curr;
-    }
-
-    for _ in 0..1997 {
-        v = perform_operation(v);
-        let curr = v % u32x8::splat(10);
-        history = (history << 8) | (u32x8::splat(9) + curr - prev);
-        let diff = history_to_diff_sequence(history);
-
-        for k in 0..8 {
-            let index = diff[k] as usize;
-            let bit_offset = k;
-            let bitset_ptr = seen_sequences_bitset.get_unchecked_mut(index);
-            let bitset = *bitset_ptr;
-            let curr_mask = -((bitset & (1 << bit_offset) == 0) as i32) as u32;
-            *bitset_ptr = bitset | (1u8 << bit_offset);
-            *sequence_totals.get_unchecked_mut(index) += (curr_mask & curr[k]) as u8;
-        }
-
-        prev = curr;
-    }
-}
-
-#[inline(always)]
-fn perform_operation(mut v: Simd<u32, 8>) -> Simd<u32, 8> {
-    let mask = u32x8::splat((1 << 24) - 1);
-    v ^= v << 6;
-    v &= mask;
-    v ^= v >> 5;
-    v ^= v << 11;
-    v &= mask;
-    v
-}
-
-#[inline(always)]
-unsafe fn history_to_diff_sequence(history: Simd<u32, 8>) -> i32x8 {
-    let diff_intermediate =
-        _mm256_maddubs_epi16(history.into(), i16x16::splat(19 * 256 + 1).into());
-    let diff = _mm256_madd_epi16(
-        diff_intermediate,
-        i32x8::splat(19 * 19 * 256 * 256 + 1).into(),
-    );
-    diff.into()
 }
 
