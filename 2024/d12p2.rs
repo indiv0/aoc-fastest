@@ -313,4 +313,3 @@ unsafe fn collect(input: &[u8; 141 + 141 * 141 + 32], extra: &[i8; 141 + 141 * 1
 
     tot
 }
-

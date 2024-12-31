@@ -368,4 +368,3 @@ unsafe fn inner_part2(input: &str) -> &'static str {
 
     std::str::from_utf8_unchecked(&PART2_OUT)
 }
-

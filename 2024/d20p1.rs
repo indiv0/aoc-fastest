@@ -215,4 +215,3 @@ unsafe fn inner_part2(input: &str) -> u64 {
 
     count.cast::<u64>().reduce_sum()
 }
-

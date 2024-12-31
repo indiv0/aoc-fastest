@@ -192,4 +192,3 @@ unsafe fn inner1(s: &[u8]) -> u32 {
 pub fn run(s: &str) -> impl Display {
     unsafe { inner1(s.as_bytes()) }
 }
-

@@ -255,4 +255,3 @@ pub fn solve() {
 pub fn run(input: &[u8]) -> impl Display {
     parse_and_compute::<true>(input)
 }
-

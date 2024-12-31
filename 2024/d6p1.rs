@@ -68,4 +68,3 @@ pub fn run(input: &[u8]) -> result {
 fn d6p1() {
     assert_eq!(run(include_bytes!("./../input/day6.txt")), 5269);
 }
-

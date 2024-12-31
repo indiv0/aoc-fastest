@@ -210,4 +210,3 @@ mod fastdiv {
         fastmod_u16(a, M, D as _)
     }
 }
-

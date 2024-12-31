@@ -201,4 +201,3 @@ unsafe fn sum_cheats(scurr: usize, n: i16, seen: &[i16; 20 + (139 + 40) * SLINE]
     }
     count.cast::<i32>()
 }
-

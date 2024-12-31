@@ -77,4 +77,3 @@ unsafe fn inner_part1(input: &str) -> u64 {
 
     -count.reduce_sum() as u64
 }
-

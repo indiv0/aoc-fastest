@@ -611,4 +611,3 @@ mod bheap {
         *heap.get_unchecked_mut(hole_pos) = hole;
     }
 }
-

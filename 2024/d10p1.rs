@@ -639,4 +639,3 @@ impl<T, const N: usize> MUHelper<T> for MaybeUninit<[T; N]> {
         &mut *self.as_mut_ptr().as_mut_slice().get_unchecked_mut(r)
     }
 }
-

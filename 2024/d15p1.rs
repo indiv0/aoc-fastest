@@ -17,9 +17,10 @@ use std::{
     arch::{
         asm,
         x86_64::{
-            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16, _mm256_movemask_epi8,
-            _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16, _mm_maddubs_epi16, _mm_minpos_epu16,
-            _mm_movemask_epi8, _mm_packus_epi32, _mm_shuffle_epi8, _mm_testc_si128, _pext_u32,
+            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16,
+            _mm256_movemask_epi8, _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16,
+            _mm_maddubs_epi16, _mm_minpos_epu16, _mm_movemask_epi8, _mm_packus_epi32,
+            _mm_shuffle_epi8, _mm_testc_si128, _pext_u32,
         },
     },
     array,
@@ -99,7 +100,8 @@ unsafe fn inner1(s: &[u8]) -> u32 {
                 let c = map.byte_add($i).read_unaligned();
                 let c = c.simd_eq(Simd::splat(b'O'));
                 let x = c.select(
-                    u8x16::from_array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) + Simd::splat($i),
+                    u8x16::from_array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+                        + Simd::splat($i),
                     Simd::splat(0),
                 );
                 (c.to_int(), x)
@@ -140,17 +142,25 @@ unsafe fn inner2(s: &[u8]) -> u32 {
 
     for y in 1..49 {
         for x in 0..3 {
-            let chunk = s.as_ptr().add(y * 51 + x * 16 + 1).cast::<u8x16>().read_unaligned();
-            let chunk = simd_swizzle!(chunk, [
-                0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15,
-                15
-            ]);
+            let chunk = s
+                .as_ptr()
+                .add(y * 51 + x * 16 + 1)
+                .cast::<u8x16>()
+                .read_unaligned();
+            let chunk = simd_swizzle!(
+                chunk,
+                [
+                    0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12,
+                    12, 13, 13, 14, 14, 15, 15
+                ]
+            );
             let a = chunk
                 .simd_eq(Simd::splat(b'#'))
                 .select(i8x32::splat(-2), i8x32::splat(-1));
             let b = chunk.simd_eq(Simd::splat(b'O')).select(
                 Simd::from_array([
-                    0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+                    0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+                    0, 1, 0, 1, 0, 1,
                 ]),
                 a,
             );
@@ -284,8 +294,8 @@ unsafe fn inner2(s: &[u8]) -> u32 {
                 let c = c.simd_eq(Simd::splat(0));
                 let x = c.select(
                     u8x32::from_array([
-                        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-                        28, 29, 30, 31, 32, 33,
+                        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                        23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
                     ]) + Simd::splat($i),
                     Simd::splat(0),
                 );

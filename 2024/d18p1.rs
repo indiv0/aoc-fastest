@@ -17,9 +17,10 @@ use std::{
     arch::{
         asm,
         x86_64::{
-            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16, _mm256_movemask_epi8,
-            _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16, _mm_maddubs_epi16, _mm_minpos_epu16,
-            _mm_movemask_epi8, _mm_packus_epi32, _mm_shuffle_epi8, _mm_testc_si128, _pdep_u32, _pext_u32, _pext_u64,
+            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16,
+            _mm256_movemask_epi8, _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16,
+            _mm_maddubs_epi16, _mm_minpos_epu16, _mm_movemask_epi8, _mm_packus_epi32,
+            _mm_shuffle_epi8, _mm_testc_si128, _pdep_u32, _pext_u32, _pext_u64,
         },
     },
     array,
@@ -83,14 +84,16 @@ unsafe fn inner1(s: &[u8]) -> u32 {
         map.add(72 / 8 + i * 72 / 8 * 3)
             .cast::<i8x32>()
             .write_unaligned(i8x32::from_array([
-                !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0,
-                !0, !0, !-128, !-1, !-1, !-1, !-1, !-1,
+                !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0,
+                !0, !0, !0, !0, !0, !0, !0, !-128, !-1, !-1, !-1, !-1, !-1,
             ]));
     }
-    map.add(69 * 72 / 8).cast::<i8x32>().write_unaligned(i8x32::from_array([
-        !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0, !0, !0,
-        !-128, !-1, !-1, !-1, !-1, !-1,
-    ]));
+    map.add(69 * 72 / 8)
+        .cast::<i8x32>()
+        .write_unaligned(i8x32::from_array([
+            !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0, !0, !0, !0, !0, !0, !0, !-128, !0, !0,
+            !0, !0, !0, !0, !0, !0, !-128, !-1, !-1, !-1, !-1, !-1,
+        ]));
 
     macro_rules! btr {
         ($idx:expr) => {
@@ -112,7 +115,11 @@ unsafe fn inner1(s: &[u8]) -> u32 {
         let shuffle = lut.as_ptr().byte_add(((mask & 0x7FC) * 4) as usize).read();
         let chunk = _mm_shuffle_epi8(chunk.into(), shuffle.into());
         let chunk = _mm_maddubs_epi16(chunk, u16x8::splat(u16::from_ne_bytes([10, 1])).into());
-        let chunk: u32x4 = _mm_madd_epi16(chunk, u16x8::from_array([72, 1, 72, 1, 72, 1, 72, 1]).into()).into();
+        let chunk: u32x4 = _mm_madd_epi16(
+            chunk,
+            u16x8::from_array([72, 1, 72, 1, 72, 1, 72, 1]).into(),
+        )
+        .into();
         let p1 = chunk[0];
         let p2 = chunk[1];
         btr!(p1);

@@ -318,4 +318,3 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
     tot
 }
-

@@ -114,4 +114,3 @@ pub fn run(s: &[u8]) -> i64 {
 fn d1p1() {
     assert_eq!(run(include_bytes!("./../input/day1.txt")), 2192892);
 }
-

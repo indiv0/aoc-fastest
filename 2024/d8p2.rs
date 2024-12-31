@@ -150,4 +150,3 @@ unsafe fn inner_part2(input: &str) -> u64 {
 
     count
 }
-

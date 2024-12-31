@@ -22,11 +22,13 @@ pub fn run(input: &str) -> impl fmt::Display {
         // Initialize data structures equivalent to the C# code
         static mut byte_order: [u16; GRID_WIDTH * GRID_WIDTH] = [0u16; GRID_WIDTH * GRID_WIDTH];
         byte_order.fill(0);
-        static mut order_lookup: [u16; PADDED_WIDTH * PADDED_WIDTH] = [u16::MAX; PADDED_WIDTH * PADDED_WIDTH];
+        static mut order_lookup: [u16; PADDED_WIDTH * PADDED_WIDTH] =
+            [u16::MAX; PADDED_WIDTH * PADDED_WIDTH];
         order_lookup.fill(u16::MAX);
 
         // Mark borders as visited
-        static mut visited: [u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64] = [0u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64];
+        static mut visited: [u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64] =
+            [0u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64];
         visited.fill(0);
         let visited_len = visited.len();
         let overflow = visited_len * 64 - (PADDED_WIDTH * PADDED_WIDTH);
@@ -35,7 +37,8 @@ pub fn run(input: &str) -> impl fmt::Display {
         *visited.get_unchecked_mut(0) = u64::MAX;
         *visited.get_unchecked_mut(1) |= (1u64 << (PADDED_WIDTH - 64)) - 1;
         *visited.get_unchecked_mut(visited_len - 1) = u64::MAX;
-        *visited.get_unchecked_mut(visited_len - 2) |= u64::MAX << (128 - (PADDED_WIDTH + overflow));
+        *visited.get_unchecked_mut(visited_len - 2) |=
+            u64::MAX << (128 - (PADDED_WIDTH + overflow));
 
         for i in 1..PADDED_WIDTH - 1 {
             let idx1 = (i * PADDED_WIDTH) / 64;
@@ -47,7 +50,8 @@ pub fn run(input: &str) -> impl fmt::Display {
             *visited.get_unchecked_mut(idx2) |= bit2;
         }
 
-        static mut reachable: [u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64] = [0u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64];
+        static mut reachable: [u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64] =
+            [0u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64];
         reachable.fill(0);
 
         // Parse the input and populate byte_order and order_lookup arrays
@@ -114,7 +118,10 @@ pub fn run(input: &str) -> impl fmt::Display {
                     if next_byte as usize == END_ID {
                         let result_x = (max_byte as usize % PADDED_WIDTH) - 1;
                         let result_y = (max_byte as usize / PADDED_WIDTH) - 1;
-                        return Coordinate { x: result_x, y: result_y };
+                        return Coordinate {
+                            x: result_x,
+                            y: result_y,
+                        };
                     }
 
                     // Neighboring positions
@@ -136,7 +143,8 @@ pub fn run(input: &str) -> impl fmt::Display {
                                 ptr += 1;
                             } else {
                                 let order_idx = (neighbor_order / 64) as usize;
-                                *reachable.get_unchecked_mut(order_idx) |= 1u64 << (neighbor_order % 64);
+                                *reachable.get_unchecked_mut(order_idx) |=
+                                    1u64 << (neighbor_order % 64);
                             }
                         }
                     }
@@ -148,4 +156,3 @@ pub fn run(input: &str) -> impl fmt::Display {
         Coordinate { x: 0, y: 0 }
     }
 }
-

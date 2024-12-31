@@ -17,9 +17,10 @@ use std::{
     arch::{
         asm,
         x86_64::{
-            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16, _mm256_movemask_epi8,
-            _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16, _mm_maddubs_epi16, _mm_minpos_epu16,
-            _mm_movemask_epi8, _mm_packus_epi32, _mm_shuffle_epi8, _mm_testc_si128, _pext_u32,
+            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16,
+            _mm256_movemask_epi8, _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16,
+            _mm_maddubs_epi16, _mm_minpos_epu16, _mm_movemask_epi8, _mm_packus_epi32,
+            _mm_shuffle_epi8, _mm_testc_si128, _pext_u32,
         },
     },
     array,
@@ -101,7 +102,8 @@ unsafe fn inner1(s: &[u8]) -> u32 {
                             let pos = pos.wrapping_add_signed(*offset.get_unchecked(dir as usize));
                             if *s.get_unchecked(pos as usize) != b'#' {
                                 *next.get_unchecked_mut(k) = Node {
-                                    pos: pos.wrapping_add_signed(*offset.get_unchecked(dir as usize)),
+                                    pos: pos
+                                        .wrapping_add_signed(*offset.get_unchecked(dir as usize)),
                                     dir,
                                     cost: next_cost,
                                 };
@@ -113,7 +115,8 @@ unsafe fn inner1(s: &[u8]) -> u32 {
                             let pos = pos.wrapping_add_signed(*offset.get_unchecked(dir as usize));
                             if *s.get_unchecked(pos as usize) != b'#' {
                                 *next.get_unchecked_mut(k) = Node {
-                                    pos: pos.wrapping_add_signed(*offset.get_unchecked(dir as usize)),
+                                    pos: pos
+                                        .wrapping_add_signed(*offset.get_unchecked(dir as usize)),
                                     dir,
                                     cost: next_cost,
                                 };

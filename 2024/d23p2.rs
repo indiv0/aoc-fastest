@@ -332,4 +332,3 @@ unsafe fn inner_part2(input: &str) -> &'static str {
 
     std::hint::unreachable_unchecked();
 }
-

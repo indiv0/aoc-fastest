@@ -221,4 +221,3 @@ mod fastdiv {
         mul128_u32(lowbits, D) as u32
     }
 }
-
