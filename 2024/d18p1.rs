@@ -95,7 +95,7 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     macro_rules! btr {
         ($idx:expr) => {
             asm!(
-"btr dword ptr[{map} + {offset}], {idx:e}"",
+                "btr dword ptr[{map} + {offset}], {idx:e}",
                 map = in(reg) map,
                 idx = in(reg) $idx,
                 offset = const 72 / 8,
@@ -125,32 +125,32 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     let res: u32;
 
     asm!(
-"30:"",
-"lea {next:e}, [{pos} + 1]"",
-"btr dword ptr[{map}], {next:e}"",
-"mov word ptr[{front} + {j} * 2], {next:x}"",
-"adc {j:l}, 0"",
-"lea {next:e}, [{pos} + 72]"",
-"btr dword ptr[{map}], {next:e}"",
-"mov word ptr[{front} + {j} * 2], {next:x}"",
-"adc {j:l}, 0"",
-"lea {next:e}, [{pos} - 1]"",
-"btr dword ptr[{map}], {next:e}"",
-"mov word ptr[{front} + {j} * 2], {next:x}"",
-"adc {j:l}, 0"",
-"lea {next:e}, [{pos} - 72]"",
-"btr dword ptr[{map}], {next:e}"",
-"mov word ptr[{front} + {j} * 2], {next:x}"",
-"adc {j:l}, 0"",
-"cmp {i:l}, {k:l}"",
-"jne 20f"",
-"mov {k:e}, {j:e}"",
-"inc {dist:e}"",
-"20:"",
-"movzx {pos:e}, word ptr[{front} + {i} * 2]"",
-"inc {i:l}"",
-"cmp {pos:x}, {end}"",
-"jne 30b"",
+    "30:",
+        "lea {next:e}, [{pos} + 1]",
+        "btr dword ptr[{map}], {next:e}",
+        "mov word ptr[{front} + {j} * 2], {next:x}",
+        "adc {j:l}, 0",
+        "lea {next:e}, [{pos} + 72]",
+        "btr dword ptr[{map}], {next:e}",
+        "mov word ptr[{front} + {j} * 2], {next:x}",
+        "adc {j:l}, 0",
+        "lea {next:e}, [{pos} - 1]",
+        "btr dword ptr[{map}], {next:e}",
+        "mov word ptr[{front} + {j} * 2], {next:x}",
+        "adc {j:l}, 0",
+        "lea {next:e}, [{pos} - 72]",
+        "btr dword ptr[{map}], {next:e}",
+        "mov word ptr[{front} + {j} * 2], {next:x}",
+        "adc {j:l}, 0",
+        "cmp {i:l}, {k:l}",
+        "jne 20f",
+        "mov {k:e}, {j:e}",
+        "inc {dist:e}",
+    "20:",
+        "movzx {pos:e}, word ptr[{front} + {i} * 2]",
+        "inc {i:l}",
+        "cmp {pos:x}, {end}",
+        "jne 30b",
         map = in(reg) map,
         pos = in(reg) 72usize,
         next = out(reg) _,
@@ -168,7 +168,7 @@ unsafe fn inner1(s: &[u8]) -> u32 {
 
 #[inline]
 unsafe fn inner2(s: &[u8]) -> &str {
-"""
+    ""
 }
 
 #[inline]
@@ -179,3 +179,4 @@ pub fn run(s: &str) -> u32 {
 #[inline]
 pub fn part2(s: &str) -> &str {
     unsafe { inner2(s.as_bytes()) }
+}

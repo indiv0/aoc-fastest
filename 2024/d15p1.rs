@@ -51,35 +51,35 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     *map.get_unchecked_mut(pos) = b'.';
 
     asm!(
-"jmp 24f"",
+        "jmp 24f",
     // #
-"21:"",
-"sub {pos:e}, dword ptr[{dir_table} + {inst} * 2]"",
+    "21:",
+        "sub {pos:e}, dword ptr[{dir_table} + {inst} * 2]",
     // .
-"20:"",
-"inc {ip}"",
-"je 99f"",
-"24:"",
-"movzx {inst:e}, byte ptr[{instrs} + {ip}]"",
-"add {pos:e}, dword ptr[{dir_table} + {inst} * 2]"",
-"cmp byte ptr[{map} + {pos}], 46"",
-"je 20b"",
-"jb 21b"",
+    "20:",
+        "inc {ip}",
+        "je 99f",
+    "24:",
+        "movzx {inst:e}, byte ptr[{instrs} + {ip}]",
+        "add {pos:e}, dword ptr[{dir_table} + {inst} * 2]",
+        "cmp byte ptr[{map} + {pos}], 46",
+        "je 20b",
+        "jb 21b",
     // O
-"mov {block_pos:e}, {pos:e}"",
-"22:"",
+        "mov {block_pos:e}, {pos:e}",
+    "22:",
     // O repeats
-"add {block_pos:e}, dword ptr[{dir_table} + {inst} * 2]"",
-"cmp byte ptr[{map} + {block_pos}], 46"",
-"ja 22b"",
-"jb 21b"",
+        "add {block_pos:e}, dword ptr[{dir_table} + {inst} * 2]",
+        "cmp byte ptr[{map} + {block_pos}], 46",
+        "ja 22b",
+        "jb 21b",
     // O then .
-"23:"",
-"mov byte ptr[{map} + {pos}], 46"",
-"mov byte ptr[{map} + {block_pos}], 79"",
-"inc {ip}"",
-"jne 24b"",
-"99:"",
+    "23:",
+        "mov byte ptr[{map} + {pos}], 46",
+        "mov byte ptr[{map} + {block_pos}], 79",
+        "inc {ip}",
+        "jne 24b",
+    "99:",
         instrs = in(reg) s.as_ptr_range().end,
         ip = inout(reg) -20020isize => _,
         map = in(reg) map,
@@ -165,103 +165,103 @@ unsafe fn inner2(s: &[u8]) -> u32 {
     let pos = 24usize * 128 + 48;
 
     asm!(
-"jmp 24f"",
-"21:"",
-"sub {pos:e}, dword ptr[{dir_table} + {inst} * 2]"",
-"20:"",
-"inc {ip}"",
-"je 99f"",
-"24:"",
-"movzx {inst:e}, byte ptr[{instrs} + {ip}]"",
-"add {pos:e}, dword ptr[{dir_table} + {inst} * 2]"",
-"cmp byte ptr[{map} + {pos}], -1"",
-"je 20b"", // .
-"jl 21b"", // #
+        "jmp 24f",
+    "21:",
+        "sub {pos:e}, dword ptr[{dir_table} + {inst} * 2]",
+    "20:",
+        "inc {ip}",
+        "je 99f",
+    "24:",
+        "movzx {inst:e}, byte ptr[{instrs} + {ip}]",
+        "add {pos:e}, dword ptr[{dir_table} + {inst} * 2]",
+        "cmp byte ptr[{map} + {pos}], -1",
+        "je 20b", // .
+        "jl 21b", // #
         // []
-"mov {bpos:e}, {pos:e}"",
-"mov {step:e}, dword ptr[{dir_table} + {inst} * 2]"",
-"cmp {step:l}, -128"",
-"je 25f"", // vertical
+        "mov {bpos:e}, {pos:e}",
+        "mov {step:e}, dword ptr[{dir_table} + {inst} * 2]",
+        "cmp {step:l}, -128",
+        "je 25f", // vertical
         // horizontal
-"add {step:e}, {step:e}"",
-"26:"",
-"add {bpos:e}, {step:e}"",
-"cmp byte ptr[{map} + {bpos}], -1"",
-"jg 26b"", // [] repeats
-"jl 21b"", // [] then # // TODO optimize
+        "add {step:e}, {step:e}",
+    "26:",
+        "add {bpos:e}, {step:e}",
+        "cmp byte ptr[{map} + {bpos}], -1",
+        "jg 26b", // [] repeats
+        "jl 21b", // [] then # // TODO optimize
         // [] then .
-"cmp byte ptr[{map} + {pos}], 0"",
-"je 27f"", // right
+        "cmp byte ptr[{map} + {pos}], 0",
+        "je 27f", // right
         // left
-"28:"",
-"mov word ptr[{map} + {bpos}], 256"",
-"sub {bpos:e}, {step:e}"",
-"cmp {bpos:e}, {pos:e}"",
-"jne 28b"",
-"mov byte ptr[{map} + {bpos}], -1"",
-"inc {ip}"",
-"jne 24b"",
-"jmp 99f"",
-"27:"",
-"mov word ptr[{map} + {bpos} - 1], 256"",
-"sub {bpos:e}, {step:e}"",
-"cmp {bpos:e}, {pos:e}"",
-"jne 27b"",
-"mov byte ptr[{map} + {bpos}], -1"",
-"inc {ip}"",
-"jne 24b"",
-"jmp 99f"",
-"31:"",
-"sub {pos:e}, {step:e}"",
-"mov rsp, {saved_rsp}"",
-"inc {ip}"",
-"jne 24b"",
-"jmp 99f"",
-"33:"",
-"inc {bpos:e}"",
-"30:"",
-"sub {bpos:l}, byte ptr[{map} + {bpos}]"", // align block position to left
-"add {bpos:e}, {step:e}"",
-"cmp byte ptr[{map} + {bpos}], -1"",
-"jl 31b"", // #
-"je 32f"", // .
-"cmp byte ptr[{map} + {bpos}], 0"",
-"je 30b"",
-"push {bpos}"",
-"call 30b"",
-"pop {bpos}"",
-"32:"",
-"cmp byte ptr[{map} + {bpos} + 1], -1"",
-"jl 31b"", // #
-"jg 33b"", // []
+    "28:",
+        "mov word ptr[{map} + {bpos}], 256",
+        "sub {bpos:e}, {step:e}",
+        "cmp {bpos:e}, {pos:e}",
+        "jne 28b",
+        "mov byte ptr[{map} + {bpos}], -1",
+        "inc {ip}",
+        "jne 24b",
+        "jmp 99f",
+    "27:",
+        "mov word ptr[{map} + {bpos} - 1], 256",
+        "sub {bpos:e}, {step:e}",
+        "cmp {bpos:e}, {pos:e}",
+        "jne 27b",
+        "mov byte ptr[{map} + {bpos}], -1",
+        "inc {ip}",
+        "jne 24b",
+        "jmp 99f",
+    "31:",
+        "sub {pos:e}, {step:e}",
+        "mov rsp, {saved_rsp}",
+        "inc {ip}",
+        "jne 24b",
+        "jmp 99f",
+    "33:",
+        "inc {bpos:e}",
+    "30:",
+        "sub {bpos:l}, byte ptr[{map} + {bpos}]", // align block position to left
+        "add {bpos:e}, {step:e}",
+        "cmp byte ptr[{map} + {bpos}], -1",
+        "jl 31b", // #
+        "je 32f", // .
+        "cmp byte ptr[{map} + {bpos}], 0",
+        "je 30b",
+        "push {bpos}",
+        "call 30b",
+        "pop {bpos}",
+    "32:",
+        "cmp byte ptr[{map} + {bpos} + 1], -1",
+        "jl 31b", // #
+        "jg 33b", // []
         // .
-"ret"",
-"35:"",
-"sub {bpos2:l}, byte ptr[{map} + {bpos2}]"", // align block position to left
-"mov word ptr[{map} + {bpos2}], -1"",
-"add {bpos2:e}, {step:e}"",
-"cmp byte ptr[{map} + {bpos2}], 0"",
-"push {bpos2}"",
-"jl 36f"", // done
-"call 35b"",
-"mov {bpos2}, qword ptr[rsp]"",
-"36:"",
-"inc {bpos2:e}"",
-"cmp byte ptr[{map} + {bpos2}], 0"",
-"jl 37f"", // done
-"call 35b"",
-"37:"",
-"pop {bpos2}"",
-"mov word ptr[{map} + {bpos2}], 256"",
-"ret"",
-"25:"",
-"mov {saved_rsp}, rsp"",
-"mov {bpos2:e}, {bpos:e}"",
-"call 30b"", // check pushability
-"call 35b"", // returned normally, so we can push
-"inc {ip}"",
-"jne 24b"",
-"99:"",
+        "ret",
+    "35:",
+        "sub {bpos2:l}, byte ptr[{map} + {bpos2}]", // align block position to left
+        "mov word ptr[{map} + {bpos2}], -1",
+        "add {bpos2:e}, {step:e}",
+        "cmp byte ptr[{map} + {bpos2}], 0",
+        "push {bpos2}",
+        "jl 36f", // done
+        "call 35b",
+        "mov {bpos2}, qword ptr[rsp]",
+    "36:",
+        "inc {bpos2:e}",
+        "cmp byte ptr[{map} + {bpos2}], 0",
+        "jl 37f", // done
+        "call 35b",
+    "37:",
+        "pop {bpos2}",
+        "mov word ptr[{map} + {bpos2}], 256",
+        "ret",
+    "25:",
+        "mov {saved_rsp}, rsp",
+        "mov {bpos2:e}, {bpos:e}",
+        "call 30b", // check pushability
+        "call 35b", // returned normally, so we can push
+        "inc {ip}",
+        "jne 24b",
+    "99:",
         instrs = in(reg) s.as_ptr_range().end,
         ip = inout(reg) -20020isize => _,
         map = in(reg) map,
@@ -318,3 +318,4 @@ pub fn run(s: &str) -> impl Display {
 #[inline]
 pub fn part2(s: &str) -> impl Display {
     unsafe { inner2(s.as_bytes()) }
+}

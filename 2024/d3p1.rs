@@ -128,7 +128,7 @@ static LUT: [u8x16; 1 << 7] = unsafe {
 
 static mut SCRATCH: [u8x32; 5] = [u8x32::from_array([0; 32]); 5];
 
-"avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt"")]
+#[target_feature(enable = "avx2,bmi1,bmi2,cmpxchg16b,lzcnt,movbe,popcnt")]
 unsafe fn inner1(s: &[u8]) -> u32 {
     let r = s.as_ptr_range();
     let mut ptr = r.start;
@@ -192,3 +192,4 @@ unsafe fn inner1(s: &[u8]) -> u32 {
 pub fn run(s: &str) -> impl Display {
     unsafe { inner1(s.as_bytes()) }
 }
+

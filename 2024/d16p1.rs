@@ -167,7 +167,7 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     // loop {
     //     // let mut map = s.to_vec();
     //     // for node in &front {
-">v<^""[node.dir as usize];
+    //     //     map[node.pos as usize] = b">v<^"[node.dir as usize];
     //     // }
     //     // for node in &curr {
     //     //     map[node.pos as usize] = b'*';
@@ -177,7 +177,7 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     //     // }
     //     // for y in 0..side_len!() {
     //     //     println!(
-"{}"",
+    //     //         "{}",
     //     //         std::str::from_utf8(&map[y * row_len!()..y * row_len!() + side_len!()]).unwrap()
     //     //     );
     //     // }
@@ -298,3 +298,4 @@ pub fn run(s: &str) -> impl Display {
 #[inline]
 pub fn part2(s: &str) -> impl Display {
     unsafe { inner2(s.as_bytes()) }
+}

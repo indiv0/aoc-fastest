@@ -6,8 +6,8 @@ use std::{
     simd::{cmp::SimdPartialEq, u8x16, u8x64},
 };
 
-"local"")]
-"../inputs/day3.txt"");
+#[cfg(feature = "local")]
+pub const INPUT: &'static [u8] = include_bytes!("../inputs/day3.txt");
 
 fn parse_digit(c: u8) -> usize {
     (c - 48) as usize
@@ -46,7 +46,7 @@ pub fn parse_and_compute<const ENABLE_DO_STATE: bool>(input: &[u8]) -> usize {
             return sum;
         }
 
-"do"" mode is set to ""don't"", we only care about finding `d` characters.
+        // For part 2, when the "do" mode is set to "don't", we only care about finding `d` characters.
         //
         // Since d's are so much sparser in the inputs than m's, there's a decent chance it will be
         // closer to 64 chars ahead than 16, and the overhead of reading further tends to be worth it.
@@ -243,15 +243,16 @@ pub fn parse_and_compute<const ENABLE_DO_STATE: bool>(input: &[u8]) -> usize {
     }
 }
 
-"local"")]
+#[cfg(feature = "local")]
 pub fn solve() {
     let out = parse_and_compute::<false>(INPUT);
-"Part 1: {out}"");
+    println!("Part 1: {out}");
 
     let out = parse_and_compute::<true>(INPUT);
-"Part 2: {out}"");
+    println!("Part 2: {out}");
 }
 
 pub fn run(input: &[u8]) -> impl Display {
     parse_and_compute::<true>(input)
 }
+

@@ -46,8 +46,8 @@ const SDOWN: usize = SLINE;
 const SLEFT: usize = LEFT;
 const SRIGHT: usize = RIGHT;
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     unsafe fn part2_rec<const IDIR: usize, const SDIR: usize>(
         input: &[u8; 141 * 142],
@@ -201,3 +201,4 @@ unsafe fn sum_cheats(scurr: usize, n: i16, seen: &[i16; 20 + (139 + 40) * SLINE]
     }
     count.cast::<i32>()
 }
+

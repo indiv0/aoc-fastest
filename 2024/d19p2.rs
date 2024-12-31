@@ -32,8 +32,8 @@ static LUT: [usize; 128] = {
     lut
 };
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -153,3 +153,4 @@ unsafe fn inner_part2(input: &str) -> u64 {
         })
         .sum()
 }
+

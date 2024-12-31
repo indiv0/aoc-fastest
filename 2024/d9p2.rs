@@ -90,8 +90,8 @@ use std::{
   simd::{cmp::SimdPartialOrd, u16x16, u16x2, u8x32, u8x64, u8x8},
 };
 
-"local"")]
-"../inputs/day9.txt"");
+#[cfg(feature = "local")]
+pub const INPUT: &'static [u8; 20_000] = include_bytes!("../inputs/day9.txt");
 
 fn parse_digit(c: u8) -> u8 { c - 48 }
 
@@ -121,7 +121,7 @@ fn aligned_vec<T>(n_bytes: usize) -> Vec<T> {
   assert_eq!(
     std::mem::size_of::<AlignToSixtyFour>() % std::mem::size_of::<T>(),
     0,
-"64 must be divisible by the size of `T` in bytes""
+    "64 must be divisible by the size of `T` in bytes"
   );
 
   // Lazy math to ensure we always have enough.
@@ -280,7 +280,7 @@ fn parse_input_p2(input: &[u8]) -> (Vec<u8>, Vec<u8>, Vec<MiniVec>) {
   }
 
   /*
-"local"") && input.len() % 2 != 0 {
+  if cfg!(feature = "local") && input.len() % 2 != 0 {
     let batch_handled_count = batch_count * VECTOR_LEN;
     let mut it = input[batch_handled_count..input.len() - if input.len() % 2 == 0 { 1 } else { 0 }]
       .array_chunks::<2>();
@@ -305,7 +305,7 @@ fn parse_input_p2(input: &[u8]) -> (Vec<u8>, Vec<u8>, Vec<MiniVec>) {
         *orig_counts.get_unchecked_mut(id) = size;
       }
     }
-"local"") {
+  } else if cfg!(feature = "local") {
     assert!(input.len() % VECTOR_LEN == 0);
     // we'd don't need to handle converting the newline that we parsed as the last character into a
     // 0 to indicate that there are zero empty slots at the end.
@@ -537,7 +537,7 @@ pub fn part2(raw_input: &[u8]) -> usize {
         if finished_digit_count == 9 {
           debug_assert_eq!(
             start_span_ix_by_needed_size[0], 0,
-"there are never zero-size files in the inputs apparently""
+            "there are never zero-size files in the inputs apparently"
           );
           break;
         }
@@ -659,7 +659,7 @@ pub fn part2(raw_input: &[u8]) -> usize {
   out
 }
 
-"local"")]
+#[cfg(feature = "local")]
 pub fn solve() {
   use crate::helpers::leak_to_page_aligned;
 
@@ -667,11 +667,12 @@ pub fn solve() {
 
   let out = part1(aligned_input);
 
-"Part 1: {}"", out);
+  println!("Part 1: {}", out);
 
   let out = part2(aligned_input);
 
-"Part 2: {}"", out);
+  println!("Part 2: {}", out);
 }
 
 pub fn run(input: &[u8]) -> impl Display { part2(input) }
+

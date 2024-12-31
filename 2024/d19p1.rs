@@ -84,56 +84,56 @@ unsafe fn inner1(s: &[u8]) -> u32 {
     let mut total = 0;
 
     asm!(
-"mov {saved_rsp}, rsp"",
-"jmp 20f"",
+        "mov {saved_rsp}, rsp",
+        "jmp 20f",
 
-"203:"",
-"inc {i:e}"",
-"lea {node}, [{trie} + {tmp} * 4]"",
-"200:"",
-"cmp byte ptr[{node} + 4], 0"",
-"je 201f"", // try continuing
-"bts {seen}, {i}"",
-"jc 201f"", // memoized: can't finish pattern here
-"cmp byte ptr[{ptr} + {i}], {lf}"",
-"je 202f"", // success
+    "203:",
+        "inc {i:e}",
+        "lea {node}, [{trie} + {tmp} * 4]",
+    "200:",
+        "cmp byte ptr[{node} + 4], 0",
+        "je 201f", // try continuing
+        "bts {seen}, {i}",
+        "jc 201f", // memoized: can't finish pattern here
+        "cmp byte ptr[{ptr} + {i}], {lf}",
+        "je 202f", // success
         // try finishing this pattern
-"push {i}"",
-"push {node}"",
-"mov {node}, {trie}"",
-"call 201f"",
-"pop {node}"",
-"pop {i}"",
-"201:"",
-"movzx {hash:e}, byte ptr[{ptr} + {i}]"",
-"pext {hash:e}, {hash:e}, {hash_mask:e}"",
-"sub {hash:e}, {hash_offset}"",
-"js 204f"", // in the middle of a pattern but towel is done
-"movzx {tmp:e}, word ptr[{node} + {hash} * 2]"",
-"test {tmp:e}, {tmp:e}"",
-"jne 203b"", // continue
-"204:"",
-"ret"", // dead end
+        "push {i}",
+        "push {node}",
+        "mov {node}, {trie}",
+        "call 201f",
+        "pop {node}",
+        "pop {i}",
+    "201:",
+        "movzx {hash:e}, byte ptr[{ptr} + {i}]",
+        "pext {hash:e}, {hash:e}, {hash_mask:e}",
+        "sub {hash:e}, {hash_offset}",
+        "js 204f", // in the middle of a pattern but towel is done
+        "movzx {tmp:e}, word ptr[{node} + {hash} * 2]",
+        "test {tmp:e}, {tmp:e}",
+        "jne 203b", // continue
+    "204:",
+        "ret", // dead end
 
-"202:"",
-"mov rsp, {saved_rsp}"",
-"inc {total:e}"",
-"lea {ptr}, [{ptr} + {i} + 1]"",
-"cmp {ptr}, {end}"",
-"je 22f"",
-"20:"",
-"mov {node}, {trie}"",
-"xor {seen:e}, {seen:e}"",
-"xor {i:e}, {i:e}"",
-"call 201b"",
-"21:"",
-"inc {ptr}"",
-"cmp byte ptr[{ptr}], {lf}"",
-"jne 21b"",
-"inc {ptr}"",
-"cmp {ptr}, {end}"",
-"jne 20b"",
-"22:"",
+    "202:",
+        "mov rsp, {saved_rsp}",
+        "inc {total:e}",
+        "lea {ptr}, [{ptr} + {i} + 1]",
+        "cmp {ptr}, {end}",
+        "je 22f",
+    "20:",
+        "mov {node}, {trie}",
+        "xor {seen:e}, {seen:e}",
+        "xor {i:e}, {i:e}",
+        "call 201b",
+    "21:",
+        "inc {ptr}",
+        "cmp byte ptr[{ptr}], {lf}",
+        "jne 21b",
+        "inc {ptr}",
+        "cmp {ptr}, {end}",
+        "jne 20b",
+    "22:",
 
         saved_rsp = out(reg) _,
         seen = out(reg) _,
@@ -166,3 +166,4 @@ pub fn run(s: &str) -> u32 {
 #[inline]
 pub fn part2(s: &str) -> u64 {
     unsafe { inner2(s.as_bytes()) }
+}

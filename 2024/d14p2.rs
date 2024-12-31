@@ -54,8 +54,8 @@ macro_rules! parse {
 const W: i64 = 101;
 const H: i64 = 103;
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let mut counts = [[0; 2]; 2];
     let mut ptr = input.as_ptr().wrapping_sub(1);
@@ -88,8 +88,8 @@ unsafe fn inner_part1(input: &str) -> u64 {
     counts[0][0] * counts[0][1] * counts[1][0] * counts[1][1]
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     type Ty = u16;
 
@@ -215,3 +215,4 @@ mod fastdiv {
         fastmod_u16(a, M, D as _)
     }
 }
+

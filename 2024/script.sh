@@ -7,11 +7,9 @@ get_and_save() {
   database=../../ferris-elf/database.db
   query="select code from runs where day=${day} and part=${part} AND time=${time} limit 1;"
   # Fetch code from DB;
-  # Strip leading quote;
-  # Strip trailing quote;
   # Change newline to UNIX;
   # Save to file.
-  sqlite3 -csv ${database} "${query}" | cut -d'"' -f2- | head -c -2 | sed 's/\r$//' > d${day}p${part}.rs
+  sqlite3 ${database} "${query}" | sed 's/\r$//' > d${day}p${part}.rs
 }
 
 #get_and_save  1 1   5484

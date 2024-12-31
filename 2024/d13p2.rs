@@ -49,8 +49,8 @@ macro_rules! parse {
     }};
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let mut ptr = input.as_ptr().wrapping_sub(1);
     let end = input.as_ptr().add(input.len());
@@ -94,8 +94,8 @@ unsafe fn inner_part1(input: &str) -> u64 {
     tot
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     let mut ptr = input.as_ptr().wrapping_sub(1);
     let end = input.as_ptr().add(input.len());
@@ -138,3 +138,4 @@ unsafe fn inner_part2(input: &str) -> u64 {
 
     tot
 }
+

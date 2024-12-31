@@ -22,8 +22,8 @@ pub fn part2(input: &str) -> u64 {
     unsafe { inner_part2(input) }
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -116,7 +116,7 @@ unsafe fn inner_part1(input: &str) -> u64 {
                 assert_eq!(
                     edges[141 + 141 * y + x],
                     expected[141 * y + x],
-"x={x} y={y}""
+                    "x={x} y={y}"
                 );
             }
         }
@@ -125,8 +125,8 @@ unsafe fn inner_part1(input: &str) -> u64 {
     collect(&input, &edges)
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -227,7 +227,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
                 assert_eq!(
                     corners[141 + 141 * y + x],
                     expected[141 * y + x],
-"got={}, expected={}, x={x}, y={y}"",
+                    "got={}, expected={}, x={x}, y={y}",
                     corners[141 + 141 * y + x],
                     expected[141 * y + x],
                 );
@@ -313,3 +313,4 @@ unsafe fn collect(input: &[u8; 141 + 141 * 141 + 32], extra: &[i8; 141 + 141 * 1
 
     tot
 }
+

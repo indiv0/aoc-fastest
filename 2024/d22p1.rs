@@ -63,7 +63,7 @@ pub(crate) fn next(mut n: u32) -> u32 {
 }
 
 // static LUT1: [u32; 1 << 24] =
-"OUT_DIR""), ""/d22p1.lut""))) };
+//     unsafe { std::mem::transmute(*include_bytes!(concat!(env!("OUT_DIR"), "/d22p1.lut"))) };
 
 #[allow(long_running_const_eval)]
 static LUT1: [u32; 1 << 24] = {
@@ -97,8 +97,8 @@ static LUT1: [u32; 1 << 24] = {
     lut
 };
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let mut ptr = input.as_ptr();
 
@@ -125,8 +125,8 @@ unsafe fn inner_part1(input: &str) -> u64 {
 }
 
 #[allow(unused)]
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -221,3 +221,4 @@ mod fastdiv {
         mul128_u32(lowbits, D) as u32
     }
 }
+

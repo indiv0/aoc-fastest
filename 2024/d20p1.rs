@@ -98,8 +98,8 @@ unsafe fn part1_rec<const DIR: usize>(
     count
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let input: &[u8; 141 * 142] = input.as_bytes().try_into().unwrap_unchecked();
 
@@ -124,8 +124,8 @@ unsafe fn inner_part1(input: &str) -> u64 {
     std::hint::unreachable_unchecked()
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     const SLINE: usize = 139 + 28;
 
@@ -215,3 +215,4 @@ unsafe fn inner_part2(input: &str) -> u64 {
 
     count.cast::<u64>().reduce_sum()
 }
+

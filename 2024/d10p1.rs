@@ -22,8 +22,8 @@ pub fn part2(input: &str) -> u64 {
     unsafe { inner_part2(input) }
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -152,8 +152,8 @@ const EXTRA_MASKS: [[i8; 32]; 32] = {
     masks
 };
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     let input = input.as_bytes();
 
@@ -206,18 +206,18 @@ unsafe fn inner_part2(input: &str) -> u64 {
             }
         }
 
-"v1"");
+        println!("v1");
         for i in 0..ll - 1 {
             for j in 0..ll - 1 {
-"{} "", count.assume_init_ref()[ll * i + j]);
+                print!("{} ", count.assume_init_ref()[ll * i + j]);
             }
             println!();
         }
 
-"v2"");
+        println!("v2");
         for i in 0..ll - 1 {
             for j in 0..ll - 1 {
-"{} "", count2[ll * i + j]);
+                print!("{} ", count2[ll * i + j]);
             }
             println!();
         }
@@ -226,7 +226,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
             assert_eq!(
                 count.assume_init_ref()[i],
                 count2[i],
-"{} {} {}"",
+                "{} {} {}",
                 i,
                 i / ll,
                 i % ll
@@ -410,7 +410,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
         #[cfg(debug_assertions)]
         {
             println!(
-"{}-{} + {}-{} v2"",
+                "{}-{} + {}-{} v2",
                 c1 as char, c2 as char, c3 as char, c4 as char
             );
             for i in 0..input.len() {
@@ -451,17 +451,17 @@ unsafe fn inner_part2(input: &str) -> u64 {
                 }
             }
 
-"v1"");
+            println!("v1");
             for i in 0..ll - 1 {
                 for j in 0..ll - 1 {
-"{} "", count.assume_init_ref()[ll * i + j]);
+                    print!("{} ", count.assume_init_ref()[ll * i + j]);
                 }
                 println!();
             }
-"v2"");
+            println!("v2");
             for i in 0..ll - 1 {
                 for j in 0..ll - 1 {
-"{} "", count2[ll * i + j]);
+                    print!("{} ", count2[ll * i + j]);
                 }
                 println!();
             }
@@ -469,7 +469,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
                 assert_eq!(
                     count.assume_init_ref()[i],
                     count2[i],
-"{} {} {}"",
+                    "{} {} {}",
                     i,
                     i / ll,
                     i % ll
@@ -639,3 +639,4 @@ impl<T, const N: usize> MUHelper<T> for MaybeUninit<[T; N]> {
         &mut *self.as_mut_ptr().as_mut_slice().get_unchecked_mut(r)
     }
 }
+

@@ -166,8 +166,8 @@ unsafe fn parse11(iter: &mut std::slice::Iter<u8>, update: &mut [u8], rem: &mut 
     *iter = iter.as_slice().get_unchecked(len * 3..).iter();
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u32 {
     let mut iter = input.as_bytes().iter();
 
@@ -241,8 +241,8 @@ unsafe fn inner_part1(input: &str) -> u32 {
     tot
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u32 {
     let mut iter = input.as_bytes().iter();
 
@@ -316,3 +316,4 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
     tot
 }
+

@@ -15,7 +15,7 @@ pub fn run(input: &str) -> impl fmt::Display {
 
         impl fmt::Display for Coordinate {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-"{},{}"", self.x, self.y)
+                write!(f, "{},{}", self.x, self.y)
             }
         }
 
@@ -144,3 +144,4 @@ pub fn run(input: &str) -> impl fmt::Display {
         Coordinate { x: 0, y: 0 }
     }
 }
+

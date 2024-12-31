@@ -26,8 +26,8 @@ pub fn part2(_input: &str) -> u64 {
     0
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 #[repr(align(64))]
 unsafe fn inner_part1(input: &str) -> u64 {
     let input = input.as_bytes();
@@ -77,3 +77,4 @@ unsafe fn inner_part1(input: &str) -> u64 {
 
     -count.reduce_sum() as u64
 }
+

@@ -87,3 +87,4 @@ pub fn run(s: &str) -> &str {
 #[inline]
 pub fn part2(s: &str) -> u32 {
     unsafe { inner2(s.as_bytes()) }
+}

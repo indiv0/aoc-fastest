@@ -52,8 +52,8 @@ const NUM_THREADS: usize = 16;
 const NUM_SEQUENCES: usize = 19 * 19 * 19 * 19;
 const NUM_COUNTS: usize = NUM_SEQUENCES * NUM_THREADS + (16 - NUM_SEQUENCES % 16) % 16;
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
     static mut NUMS: [u32; 4096] = [0; 4096];
     let nums = &mut NUMS;
@@ -130,7 +130,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
     max.reduce_max() as u64
 }
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 unsafe fn process_part2_totals(
     secrets: &[u32; 8],
     sequence_totals: &mut [u8],
@@ -189,3 +189,4 @@ unsafe fn history_to_diff_sequence(history: Simd<u32, 8>) -> i32x8 {
     );
     diff.into()
 }
+

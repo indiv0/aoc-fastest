@@ -31,8 +31,8 @@ const DOWN: usize = 142;
 const LEFT: usize = -1isize as _;
 const RIGHT: usize = 1;
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u32 {
     let input = input.as_bytes();
 
@@ -160,8 +160,8 @@ const START_V_ID: u16 = START_H_ID + 1;
 const END_H_ID: u16 = 2;
 const END_V_ID: u16 = END_H_ID + 1;
 
-"popcnt,avx2,ssse3,bmi1,bmi2,lzcnt"")]
-"avx512vl""))]
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u32 {
     let input = input.as_bytes();
 
@@ -209,7 +209,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
         debug_assert_ne!(
             input[pos.wrapping_add(dir)] as char,
             '#',
-"{} {}, {} {}, {}"",
+            "{} {}, {} {}, {}",
             pos % 142,
             pos / 142,
             pos.wrapping_add(dir) % 142,
@@ -225,7 +225,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
             let cont1 = *input.get_unchecked(pos.wrapping_add(dir1)) != b'#';
             let cont2 = *input.get_unchecked(pos.wrapping_add(dir2)) != b'#';
 
-"{} {}"", pos % 142, pos / 142);
+            debug_assert_ne!(input[pos] as char, '#', "{} {}", pos % 142, pos / 142);
 
             if !cont1 && !cont2 {
                 if cont {
@@ -280,7 +280,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
                 // if start_id & !1 == 0 && dest_id & !1 == 4 {
                 //     println!(
-"setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}"",
+                //         "setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}",
                 //         dir_id.invert().parity(),
                 //         dir_id.kind(),
                 //     );
@@ -288,7 +288,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
                 // if start_id & !1 == 4 && dest_id & !1 == 10 {
                 //     println!(
-"setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}"",
+                //         "setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}",
                 //         dir_id.invert().parity(),
                 //         dir_id.kind(),
                 //     );
@@ -296,7 +296,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
                 // if start_id & !1 == 10 && dest_id & !1 == 4 {
                 //     println!(
-"setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}"",
+                //         "setting! {start_id} -> {dest_id} [{} {}] {turns} {tiles}",
                 //         dir_id.invert().parity(),
                 //         dir_id.kind(),
                 //     );
@@ -350,10 +350,10 @@ unsafe fn inner_part2(input: &str) -> u32 {
 
         // let pos = positions[id as usize / 2];
         // let (x, y) = (pos % 142, pos / 142);
-"{id:>4}: {x:>3} {y:>3} | {cost}"");
-"{:?}"", mk_queue_slice!());
+        // println!("{id:>4}: {x:>3} {y:>3} | {cost}");
+        // println!("{:?}", mk_queue_slice!());
 
-"{id:>4} | {cost}"");
+        // println!("{id:>4} | {cost}");
 
         // if cost > 10000 {
         //     panic!();
@@ -443,11 +443,11 @@ unsafe fn inner_part2(input: &str) -> u32 {
         queue_len += 1;
     }
 
-"{:?} {:?}"", costs[4], costs[5]);
-"{:?} {:?}"", costs[0], costs[1]);
+    // println!("{:?} {:?}", costs[4], costs[5]);
+    // println!("{:?} {:?}", costs[0], costs[1]);
 
-"{:?} {:?}"", moves[4].assume_init(), moves[5].assume_init());
-"{:?} {:?}"", moves[0].assume_init(), moves[1].assume_init());
+    // println!("{:?} {:?}", moves[4].assume_init(), moves[5].assume_init());
+    // println!("{:?} {:?}", moves[0].assume_init(), moves[1].assume_init());
 
     #[cfg(debug_assertions)]
     let mut seen = std::collections::HashSet::new();
@@ -458,10 +458,10 @@ unsafe fn inner_part2(input: &str) -> u32 {
         let [id, ex_cost] = *queue.as_mut_ptr().cast::<[u32; 2]>().add(queue_len);
 
         // if id == START_H_ID as _ {
-"start h! 1"");
+        //     println!("start h! 1");
         // }
         // if id == START_V_ID as _ {
-"start v! 1"");
+        //     println!("start v! 1");
         // }
 
         const SMASK: u32 = 1 << 31;
@@ -473,7 +473,7 @@ unsafe fn inner_part2(input: &str) -> u32 {
         }
         *cost_ref |= SMASK;
 
-"{id}, {ex_cost}"");
+        // println!("{id}, {ex_cost}");
 
         #[cfg(debug_assertions)]
         debug_assert!(seen.insert(id));
@@ -488,10 +488,10 @@ unsafe fn inner_part2(input: &str) -> u32 {
         }
 
         // if id == START_H_ID as _ {
-"start h!"");
+        //     println!("start h!");
         // }
         // if id == START_V_ID as _ {
-"start v!"");
+        //     println!("start v!");
         // }
 
         let m = *moves.get_unchecked(id as usize).as_ptr();
@@ -537,8 +537,8 @@ unsafe fn inner_part2(input: &str) -> u32 {
         //     count += tiles as u32 - 1;
         // }
     }
-"{:?} {:?}"", costs[4], costs[5]);
-"{:?} {:?}"", costs[0], costs[1]);
+    // println!("{:?} {:?}", costs[4], costs[5]);
+    // println!("{:?} {:?}", costs[0], costs[1]);
 
     count
 }
@@ -611,3 +611,4 @@ mod bheap {
         *heap.get_unchecked_mut(hole_pos) = hole;
     }
 }
+
