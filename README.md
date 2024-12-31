@@ -39,7 +39,7 @@ day | part |    time | rayon | user
  17 |    1 |       7 |    no | alion02/giooschi
  17 |    2 |       0 |    no | alion02
  18 |    1 |    1949 |    no | alion02
- 18 |    2 |    8187 |    no | caavik
+ 18 |    2 |    7749 |    no | caavik
  19 |    1 |   28859 |    no | alion02
  19 |    2 |   29823 |   yes | giooschi
  20 |    1 |    9147 |    no | giooschi
@@ -54,7 +54,7 @@ day | part |    time | rayon | user
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1189728ns
+             1189290ns
 ```
 for a total of 1.19ms or 621us excluding d22p2!
 

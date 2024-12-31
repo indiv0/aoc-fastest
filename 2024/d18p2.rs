@@ -20,11 +20,14 @@ pub fn run(input: &str) -> impl fmt::Display {
         }
 
         // Initialize data structures equivalent to the C# code
-        let mut byte_order = vec![0u16; GRID_WIDTH * GRID_WIDTH];
-        let mut order_lookup = vec![u16::MAX; PADDED_WIDTH * PADDED_WIDTH];
+        static mut byte_order: [u16; GRID_WIDTH * GRID_WIDTH] = [0u16; GRID_WIDTH * GRID_WIDTH];
+        byte_order.fill(0);
+        static mut order_lookup: [u16; PADDED_WIDTH * PADDED_WIDTH] = [u16::MAX; PADDED_WIDTH * PADDED_WIDTH];
+        order_lookup.fill(u16::MAX);
 
         // Mark borders as visited
-        let mut visited = vec![0u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64];
+        static mut visited: [u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64] = [0u64; (PADDED_WIDTH * PADDED_WIDTH + 63) / 64];
+        visited.fill(0);
         let visited_len = visited.len();
         let overflow = visited_len * 64 - (PADDED_WIDTH * PADDED_WIDTH);
 
@@ -44,7 +47,8 @@ pub fn run(input: &str) -> impl fmt::Display {
             *visited.get_unchecked_mut(idx2) |= bit2;
         }
 
-        let mut reachable = vec![0u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64];
+        static mut reachable: [u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64] = [0u64; (GRID_WIDTH * GRID_WIDTH + 63) / 64];
+        reachable.fill(0);
 
         // Parse the input and populate byte_order and order_lookup arrays
         let mut byte_count: u16 = 0;

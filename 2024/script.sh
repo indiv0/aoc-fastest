@@ -47,7 +47,7 @@ get_and_save 16 2  35869
 get_and_save 17 1      7
 get_and_save 17 2      0
 get_and_save 18 1   1949
-get_and_save 18 2   8187
+get_and_save 18 2   7749
 get_and_save 19 1  28859
 get_and_save 19 2  29823
 get_and_save 20 1   9147
