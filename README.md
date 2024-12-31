@@ -47,14 +47,14 @@ day | part |    time | rayon | user
  21 |    1 |       1 |    no | bendn/giooschi
  21 |    2 |       1 |    no | bendn/giooschi
  22 |    1 |    4728 |    no | giooschi
- 22 |    2 |  432796 |   yes | giooschi
+ 22 |    2 |  426440 |   yes | giooschi
  23 |    1 |    6446 |    no | giooschi
  23 |    2 |    4657 |    no | giooschi
  24 |    1 |     898 |    no | giooschi
  24 |    2 |     834 |    no | giooschi
  25 |    1 |    1436 |    no | giooschi
 ------------------------------------
-             1053595ns
+             1047239ns
 ```
 for a total of 1.05ms!
 

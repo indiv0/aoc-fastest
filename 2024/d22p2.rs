@@ -14,7 +14,7 @@ use std::simd::prelude::*;
 
 use rayon::prelude::*;
 
-const WSIZE: usize = 16;
+const WSIZE: usize = 32;
 const LEN: usize = (1 << 24) - 1 + 2000 + WSIZE;
 static mut NUM_TO_INDEX: [u32; 1 << 24] = [0; 1 << 24];
 static mut DIGITS: [u8; LEN] = [0; LEN];
@@ -175,6 +175,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
                     handle!(WSIZE);
                     curr += WSIZE - 4;
                 }
+                // TODO: Understand why the +1 here is needed
                 handle!(4 + (2000 - 4) % (WSIZE - 4) + 1);
             }
         });

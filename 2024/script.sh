@@ -55,7 +55,7 @@ get_and_save 20 2  64162
 #get_and_save 21 1      1
 #get_and_save 21 2      1
 get_and_save 22 1   4728
-get_and_save 22 2 432796
+get_and_save 22 2 426440
 get_and_save 23 1   6446
 get_and_save 23 2   4657
 get_and_save 24 1    898
