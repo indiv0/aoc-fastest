@@ -2,58 +2,58 @@
 
 here's the total of the fastest times for each day so far:
 ```
-day | part |    time | rayon | user
---- | ---- | ------- | ----- | --------
-  1 |    1 |    9150 |    no | doge
-  1 |    2 |    4945 |    no | doge
-  2 |    1 |    5002 |    no | giooschi
-  2 |    2 |    6949 |    no | giooschi
-  3 |    1 |    1676 |    no | alion02
-  3 |    2 |    1468 |    no | ameo
-  4 |    1 |    2259 |    no | giooschi
-  4 |    2 |     473 |    no | giooschi
-  5 |    1 |    3270 |    no | giooschi
-  5 |    2 |    5613 |    no | giooschi
-  6 |    1 |    4643 |    no | doge
-  6 |    2 |   94170 |   yes | giooschi
-  7 |    1 |   19841 |    no | giooschi
-  7 |    2 |   30624 |    no | giooschi
-  8 |    1 |     522 |    no | giooschi
-  8 |    2 |    1326 |    no | giooschi
-  9 |    1 |   11203 |    no | alion02
-  9 |    2 |   32345 |    no | ameo
- 10 |    1 |   12095 |    no | giooschi
- 10 |    2 |    3250 |    no | _mwlsk
- 11 |    1 |      13 |    no | giooschi
- 11 |    2 |      13 |    no | giooschi
- 12 |    1 |   58662 |    no | giooschi
- 12 |    2 |   58601 |    no | giooschi
- 13 |    1 |    1121 |    no | goldsteinq
- 13 |    2 |    1205 |    no | giooschi
- 14 |    1 |    1942 |    no | giooschi
- 14 |    2 |    1183 |    no | giooschi
- 15 |    1 |   13062 |    no | alion02
- 15 |    2 |   18900 |    no | alion02
- 16 |    1 |   22524 |    no | alion02
- 16 |    2 |   35869 |    no | giooschi
- 17 |    1 |       7 |    no | alion02/giooschi
- 17 |    2 |       0 |    no | alion02
- 18 |    1 |    1949 |    no | alion02
- 18 |    2 |    7749 |    no | caavik
- 19 |    1 |   28829 |    no | alion02
- 19 |    2 |   29823 |   yes | giooschi
- 20 |    1 |    9147 |    no | giooschi
- 20 |    2 |   64162 |   yes | giooschi
- 21 |    1 |       1 |    no | bendn/giooschi
- 21 |    2 |       1 |    no | bendn/giooschi
- 22 |    1 |    4728 |    no | giooschi
- 22 |    2 |  426440 |   yes | giooschi
- 23 |    1 |    6446 |    no | giooschi
- 23 |    2 |    4657 |    no | giooschi
- 24 |    1 |     898 |    no | giooschi
- 24 |    2 |     834 |    no | giooschi
- 25 |    1 |    1436 |    no | giooschi
-------------------------------------
+day | part |    time | rayon | user             | source available
+--- | ---- | ------- | ----- | ---------------- | ----------------
+  1 |    1 |    9150 |    no | doge             | yes
+  1 |    2 |    4945 |    no | doge             | yes
+  2 |    1 |    5002 |    no | giooschi         | yes
+  2 |    2 |    6949 |    no | giooschi         | yes
+  3 |    1 |    1676 |    no | alion02          | yes
+  3 |    2 |    1468 |    no | ameo             | yes
+  4 |    1 |    2259 |    no | giooschi         | yes
+  4 |    2 |     473 |    no | giooschi         | yes
+  5 |    1 |    3270 |    no | giooschi         | yes
+  5 |    2 |    5613 |    no | giooschi         | yes
+  6 |    1 |    4643 |    no | doge             | yes
+  6 |    2 |   94170 |   yes | giooschi         | yes
+  7 |    1 |   19841 |    no | giooschi         | yes
+  7 |    2 |   30624 |    no | giooschi         | yes
+  8 |    1 |     522 |    no | giooschi         | yes
+  8 |    2 |    1326 |    no | giooschi         | yes
+  9 |    1 |   11203 |    no | alion02          | yes
+  9 |    2 |   32345 |    no | ameo             | yes
+ 10 |    1 |   12095 |    no | giooschi         | yes
+ 10 |    2 |    3250 |    no | _mwlsk           |  no
+ 11 |    1 |      13 |    no | giooschi         | yes
+ 11 |    2 |      13 |    no | giooschi         | yes
+ 12 |    1 |   58662 |    no | giooschi         | yes
+ 12 |    2 |   58601 |    no | giooschi         | yes
+ 13 |    1 |    1121 |    no | goldsteinq       |  no
+ 13 |    2 |    1205 |    no | giooschi         | yes
+ 14 |    1 |    1942 |    no | giooschi         | yes
+ 14 |    2 |    1183 |    no | giooschi         | yes
+ 15 |    1 |   13062 |    no | alion02          | yes
+ 15 |    2 |   18900 |    no | alion02          | yes
+ 16 |    1 |   22524 |    no | alion02          | yes
+ 16 |    2 |   35869 |    no | giooschi         | yes
+ 17 |    1 |       7 |    no | alion02/giooschi | yes
+ 17 |    2 |       0 |    no | alion02          | yes
+ 18 |    1 |    1949 |    no | alion02          | yes
+ 18 |    2 |    7749 |    no | caavik           | yes
+ 19 |    1 |   28829 |    no | alion02          | yes
+ 19 |    2 |   29823 |   yes | giooschi         | yes
+ 20 |    1 |    9147 |    no | giooschi         | yes
+ 20 |    2 |   64162 |   yes | giooschi         | yes
+ 21 |    1 |       1 |    no | bendn/giooschi   | yes
+ 21 |    2 |       1 |    no | bendn/giooschi   | yes
+ 22 |    1 |    4728 |    no | giooschi         | yes
+ 22 |    2 |  426440 |   yes | giooschi         | yes
+ 23 |    1 |    6446 |    no | giooschi         | yes
+ 23 |    2 |    4657 |    no | giooschi         | yes
+ 24 |    1 |     898 |    no | giooschi         | yes
+ 24 |    2 |     834 |    no | giooschi         | yes
+ 25 |    1 |    1436 |    no | giooschi         | yes
+------------------------------------------------------------------
              1051056ns
 ```
 for a total of 1.05ms!
