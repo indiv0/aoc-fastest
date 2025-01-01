@@ -76,6 +76,7 @@ In the meantime, if you would like a more in-depth explanation of some of the op
 
 Also check out the following:
 
+- [Algorithms for Modern Hardware](https://en.algorithmica.org/hpc/)
 - [Optimising my Rust solutions for Advent of Code ](https://nindalf.com/posts/optimising-rust/)
 - [500 ⭐ in less than a second (Comment)](https://old.reddit.com/r/adventofcode/comments/1hlyocd/500_in_less_than_a_second/m3pyxdk/)
 - [500 ⭐ in less than a second (Repo)](https://github.com/maneatingape/advent-of-code-rust)
