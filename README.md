@@ -71,6 +71,7 @@ This repo contains code/optimizations from the following authors:
 - caavik: https://github.com/CameronAavik
 - void*/\_\_main\_character\_\_
 - ameo https://github.com/Ameobea/advent-of-code-2024
+  - See also: https://cprimozic.net/blog/optimizing-advent-of-code-2024/
 - doge
 - bend-n https://github.com/bend-n/
 
