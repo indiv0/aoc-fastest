@@ -1,4 +1,3 @@
-// Original by: giooschi
 #![allow(unused_attributes)]
 #![feature(portable_simd)]
 
