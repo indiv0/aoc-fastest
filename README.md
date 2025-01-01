@@ -72,6 +72,7 @@ This repo contains code/optimizations from the following authors:
 - void*/\_\_main\_character\_\_
 - ameo https://github.com/Ameobea/advent-of-code-2024
 - doge
+- bend-n https://github.com/bend-n/
 
 Thank you so much to these talented individuals for participating in AoC with us!
 I highly encourage you to checkout their repos for more details and examples.
