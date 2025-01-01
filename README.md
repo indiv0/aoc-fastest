@@ -1,5 +1,7 @@
 # aoc-fastest
 
+*Check below for resources and optimization guides!*
+
 here's the total of the fastest times for each day so far:
 ```
 day | part |    time | user            | source available
@@ -61,6 +63,18 @@ for a total of 989us!
 For any entry where source available is `no*`, the next fastest solution is
 shown instead because the author of the fastest solution has not yet agreed to
 have their code displayed here.
+
+# Further Reading
+
+In-depth explanations of these topics would be super helpful. I hope to some day write those explanations myself. In the meantime check out these resources:
+
+- [Optimizing Advent of Code D9P2 with High-Performance Rust](https://cprimozic.net/blog/optimizing-advent-of-code-2024/)
+- [Optimising my Rust solutions for Advent of Code ](https://nindalf.com/posts/optimising-rust/)
+- [500 ⭐ in less than a second (Comment)](https://old.reddit.com/r/adventofcode/comments/1hlyocd/500_in_less_than_a_second/m3pyxdk/)
+- [500 ⭐ in less than a second (Repo)](https://github.com/maneatingape/advent-of-code-rust)
+- [One Billion Row Challenge](https://curiouscoding.nl/posts/1brc/)
+
+IMO the best way to learn is to participate, which is why I highly encourage people to try to optimize AoC solutions themselves. It's a **fantastic** way to learn SIMD. If you decide to do so, absolutely join the Rust Programming Language Community discord server! It's a wonderful community with incredibly talented and knowledgeable folks who are happy to help you optimize. I've learned about topics like instruction pipelines, cache misses, and SIMD just by following the discussions there!
 
 # Credits
 
