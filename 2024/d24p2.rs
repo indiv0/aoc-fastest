@@ -29,141 +29,7 @@ pub fn part2(input: &str) -> &'static str {
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
-    let input = input.as_bytes();
-
-    let mut xids = [u8::MAX; 45];
-    let mut yids = [u8::MAX; 45];
-
-    let mut ptr = input.as_ptr();
-    for i in 0..45 {
-        xids[i] = (*ptr.add(5) - b'0') + 46;
-        ptr = ptr.add(7);
-    }
-    for i in 0..45 {
-        yids[i] = (*ptr.add(5) - b'0') + 46;
-        ptr = ptr.add(7);
-    }
-    ptr = ptr.add(1);
-
-    let mut node_to_id = [u8::MAX; 23 * 26 * 26];
-    let mut next_id = 48;
-
-    macro_rules! get_id {
-        ($a:ident, $b:ident, $c:ident) => {{
-            let node =
-                26 * 26 * ($a - b'a' as usize) + 26 * ($b - b'a' as usize) + ($c - b'a' as usize);
-            let mut id = *node_to_id.get_unchecked(node);
-            if id == u8::MAX {
-                id = next_id;
-                *node_to_id.get_unchecked_mut(node) = id;
-                next_id += 1;
-            }
-            id
-        }};
-    }
-
-    static mut OPS: [[u8; 3]; 224] = [[u8::MAX; 3]; 224];
-    let ops = &mut OPS;
-
-    let end = input.as_ptr().add(input.len());
-    loop {
-        let a = *ptr as usize;
-        let b = *ptr.add(1) as usize;
-        let c = *ptr.add(2) as usize;
-        ptr = ptr.add(4);
-
-        let (n, op, m) = if a == b'x' as usize {
-            let idx = 10 * (b - b'0' as usize) + (c - b'0' as usize);
-            let n = *xids.get_unchecked(idx);
-            let m = *yids.get_unchecked(idx);
-            let op = (*ptr == b'X') as u8;
-            ptr = ptr.add(11);
-            (n, op, m)
-        } else if a == b'y' as usize {
-            let idx = 10 * (b - b'0' as usize) + (c - b'0' as usize);
-            let n = *yids.get_unchecked(idx);
-            let m = *xids.get_unchecked(idx);
-            let op = (*ptr == b'X') as u8;
-            ptr = ptr.add(11);
-            (n, op, m)
-        } else {
-            let n = get_id!(a, b, c);
-
-            let op = *ptr;
-            let op = if op == b'O' {
-                ptr = ptr.add(3);
-                2
-            } else {
-                ptr = ptr.add(4);
-                (op == b'X') as u8
-            };
-
-            let a = *ptr as usize;
-            let b = *ptr.add(1) as usize;
-            let c = *ptr.add(2) as usize;
-            ptr = ptr.add(7);
-
-            let m = get_id!(a, b, c);
-
-            (n, op, m)
-        };
-
-        let a = *ptr as usize;
-        let b = *ptr.add(1) as usize;
-        let c = *ptr.add(2) as usize;
-        ptr = ptr.add(4);
-
-        let out = if a == b'z' as usize {
-            (10 * (b - b'0' as usize) + (c - b'0' as usize)) as u8
-        } else {
-            get_id!(a, b, c)
-        };
-
-        *ops.get_unchecked_mut(out as usize) = [n, op, m];
-
-        if ptr == end {
-            break;
-        }
-    }
-
-    let mut values = [u8::MAX; 224];
-    values[46] = 0;
-    values[47] = 1;
-
-    let mut out = 0;
-
-    for z in 0..46 {
-        macro_rules! calc_rec {
-            (force [fuel: $($fuel:tt)*] $n:expr) => {{
-                let n = $n as usize;
-                let [l, op, r] = *ops.get_unchecked(n);
-                let l = calc_rec!([fuel: $($fuel)*] l);
-                let r = calc_rec!([fuel: $($fuel)*] r);
-                match op {
-                    0 => l & r,
-                    1 => l ^ r,
-                    2 => l | r,
-                    _ => std::hint::unreachable_unchecked(),
-                }
-            }};
-            ([fuel:] $n:expr) => {
-                *values.get_unchecked($n as usize)
-            };
-            ([fuel: f $($rest:tt)*] $n:expr) => {{
-                let n = $n  as usize;
-                let mut v = *values.get_unchecked(n);
-                if v == u8::MAX {
-                    v = calc_rec!(force [fuel: $($rest)*] n);
-                    *values.get_unchecked_mut(n) = v;
-                }
-                v
-            }};
-        }
-
-        out |= (calc_rec!(force [fuel: f f f f] z) as u64) << z;
-    }
-
-    out
+    0
 }
 
 static mut PART2_OUT: [u8; 8 * 3 + 7] = [b','; 8 * 3 + 7];
@@ -173,6 +39,8 @@ static mut PART2_OUT: [u8; 8 * 3 + 7] = [b','; 8 * 3 + 7];
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> &'static str {
     let input = input.as_bytes();
+
+    // TODO: u8 ids
 
     let mut node_to_id = [u8::MAX; 23 * 26 * 26];
     let mut id_to_node = [u16::MAX; 222];
@@ -192,7 +60,7 @@ unsafe fn inner_part2(input: &str) -> &'static str {
 
         ops
     };
-    let ops = &mut OPS;
+    let mut ops = &mut OPS;
 
     macro_rules! get_id {
         ($a:ident, $b:ident, $c:ident) => {{

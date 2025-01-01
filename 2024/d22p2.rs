@@ -1,4 +1,4 @@
-// Original by: caavik/giooschi
+// Original by: caavik + giooschi
 #![allow(unused_attributes)]
 #![allow(static_mut_refs)]
 #![feature(portable_simd)]
@@ -12,19 +12,20 @@
 use std::arch::x86_64::*;
 use std::simd::prelude::*;
 
-use rayon::prelude::*;
-
 const WSIZE: usize = 16;
 const LEN: usize = (1 << 24) - 1 + 2000 + WSIZE;
 static mut NUM_TO_INDEX: [u32; 1 << 24] = [0; 1 << 24];
 static mut DIGITS: [u8; LEN] = [0; LEN];
+static mut DIFFS: [u16; LEN] = [0; LEN];
 static mut LAST_SEEN: [u32; LEN] = [0; LEN];
 
 unsafe fn build_tables() {
     let mut i = 0;
     let mut n = 1;
 
-    static mut DIFF_TO_LAST_SEEN: [u32; 19 * 19 * 19 * 19] = [0; 19 * 19 * 19 * 19];
+    let mut next_diff_id = 0;
+    static mut DIFF_IDS: [u16; 19 * 19 * 19 * 19] = [u16::MAX; 19 * 19 * 19 * 19];
+    static mut DIFF_TO_LAST_SEEN: [u32; 40951] = [0; 40951];
 
     while i < LEN {
         if i < (1 << 24) - 1 {
@@ -43,8 +44,15 @@ unsafe fn build_tables() {
             let diff = [9 + d2 - d1, 9 + d3 - d2, 9 + d4 - d3, 9 + d5 - d4]
                 .into_iter()
                 .fold(0, |a, d| 19 * a + d);
-            LAST_SEEN[i] = DIFF_TO_LAST_SEEN[diff];
-            DIFF_TO_LAST_SEEN[diff] = i as u32;
+            let mut diff_id = DIFF_IDS[diff];
+            if diff_id == u16::MAX {
+                diff_id = next_diff_id;
+                DIFF_IDS[diff] = next_diff_id;
+                next_diff_id += 1;
+            }
+            DIFFS[i] = diff_id;
+            LAST_SEEN[i] = DIFF_TO_LAST_SEEN[diff_id as usize];
+            DIFF_TO_LAST_SEEN[diff_id as usize] = i as u32;
         }
 
         n ^= (n << 6) & ((1 << 24) - 1);
@@ -99,9 +107,7 @@ macro_rules! parse {
     }};
 }
 
-const NUM_THREADS: usize = 16;
 const NUM_SEQUENCES: usize = 19 * 19 * 19 * 19;
-const NUM_COUNTS: usize = NUM_SEQUENCES * NUM_THREADS + (16 - NUM_SEQUENCES % 16) % 16;
 
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
@@ -132,58 +138,63 @@ unsafe fn inner_part2(input: &str) -> u64 {
         nums_len += 1;
     };
 
+    const NUM_COUNTS: usize = NUM_SEQUENCES * par::NUM_THREADS + (16 - NUM_SEQUENCES % 16) % 16;
     static mut COUNTS: [u8; NUM_COUNTS] = [0; NUM_COUNTS];
     COUNTS.fill(0);
 
     let nums = nums.get_unchecked_mut(..nums_len);
 
-    let chunk_len = nums.len().div_ceil(NUM_THREADS).next_multiple_of(8);
+    let mut chunk_lens = [nums.len() / 8 / par::NUM_THREADS * 8; par::NUM_THREADS];
+    for i in 0..nums.len() / 8 % par::NUM_THREADS {
+        chunk_lens[i] += 8;
+    }
+    chunk_lens[par::NUM_THREADS - 1] += nums.len() % 8;
 
-    nums.par_chunks(chunk_len)
-        .zip(COUNTS.par_chunks_mut(NUM_SEQUENCES))
-        .with_max_len(1)
-        .for_each(|(chunk, counts)| {
-            for &c in chunk {
-                let idx = *NUM_TO_INDEX.get_unchecked(c as usize) as usize;
-                let mut curr = idx;
+    let mut chunk_pos = [0; par::NUM_THREADS + 1];
+    for i in 0..par::NUM_THREADS {
+        chunk_pos[i + 1] = chunk_pos[i] + chunk_lens[i];
+    }
 
-                macro_rules! handle {
-                    ($max:expr) => {{
-                        let digits = DIGITS.get_unchecked(curr..curr + WSIZE);
-                        let digits = Simd::<u8, WSIZE>::from_slice(digits);
-                        let d16 = digits.cast::<u16>();
-                        let nt = Simd::splat(19);
-                        let ntt = Simd::splat(19 * 19);
-                        let d1 = d16 - d16.rotate_elements_right::<1>();
-                        let ntd = d1 + nt * d1.rotate_elements_right::<1>();
-                        let nttd = ntd + ntt * ntd.rotate_elements_right::<2>();
-                        let diff = nttd + Simd::splat(19 * 19 * 19 * 9 + 19 * 19 * 9 + 19 * 9 + 9);
+    par::par(|idx| {
+        let chunk = nums.get_unchecked(chunk_pos[idx]..chunk_pos[idx + 1]);
+        let counts = &mut *(&raw mut COUNTS).cast::<[u8; NUM_SEQUENCES]>().add(idx);
 
-                        let last = LAST_SEEN.get_unchecked(curr..curr + WSIZE);
-                        let last = Simd::<u32, WSIZE>::from_slice(last);
-                        let mask = last.simd_lt(Simd::splat(idx as u32 + 4));
+        for &c in chunk {
+            let idx = *NUM_TO_INDEX.get_unchecked(c as usize) as usize;
+            let mut curr = idx + 1;
 
-                        let to_sum = digits & mask.to_int().cast();
+            macro_rules! handle {
+                ($min:expr) => {{
+                    let digits = DIGITS.get_unchecked(curr..curr + WSIZE);
+                    let digits = Simd::<u8, WSIZE>::from_slice(digits);
 
-                        for i in 4..$max {
-                            *counts.get_unchecked_mut(diff[i] as usize) += to_sum[i];
-                        }
-                    }};
-                }
+                    let diff = DIFFS.get_unchecked(curr..curr + WSIZE);
 
-                while curr + WSIZE <= idx + 2000 {
-                    handle!(WSIZE);
-                    curr += WSIZE - 4;
-                }
-                handle!(4 + (2000 - 4) % (WSIZE - 4) + 1);
+                    let last = LAST_SEEN.get_unchecked(curr..curr + WSIZE);
+                    let last = Simd::<u32, WSIZE>::from_slice(last).cast::<i32>();
+                    let mask = last.simd_lt(Simd::splat(idx as i32 + 4));
+                    let to_sum = digits & mask.to_int().cast();
+
+                    for i in $min..WSIZE {
+                        *counts.get_unchecked_mut(diff[i] as usize) += to_sum[i];
+                    }
+
+                    curr += WSIZE;
+                }};
             }
-        });
+
+            handle!(3);
+            for _ in 1..2000 / WSIZE {
+                handle!(0);
+            }
+        }
+    });
 
     let mut max = u16x16::splat(0);
 
     for i in 0..NUM_SEQUENCES.div_ceil(16) {
         let mut sum = u16x16::splat(0);
-        for j in 0..NUM_THREADS {
+        for j in 0..par::NUM_THREADS {
             let b = u8x16::from_slice(
                 COUNTS
                     .get_unchecked(NUM_SEQUENCES * j + 16 * i..)
@@ -195,4 +206,68 @@ unsafe fn inner_part2(input: &str) -> u64 {
     }
 
     max.reduce_max() as u64
+}
+
+mod par {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    fn wait() {
+        for i in 1..NUM_THREADS {
+            loop {
+                let ptr = WORK[i].0.load(Ordering::Acquire);
+                if ptr.is_null() {
+                    break;
+                }
+                std::hint::spin_loop();
+            }
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait();
+    }
 }

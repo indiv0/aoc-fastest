@@ -1,25 +1,22 @@
 // Original by: doge
-#![feature(core_intrinsics)]
-
 const WIDTH: usize = 131;
 const HEIGHT: usize = 130;
 const SIZE: usize = WIDTH * HEIGHT;
-type result = i16;
 
 #[inline(always)]
-unsafe fn inner(s: &[u8]) -> result {
-    let mut loc = memchr::memchr(b'^', s).unwrap_unchecked();
+unsafe fn inner(s: &[u8]) -> u32 {
+    let loc = memchr::memchr(b'^', s).unwrap_unchecked();
     let mut new = [1_u8; SIZE];
     let s_ptr = s.as_ptr();
     let new_ptr = new.as_mut_ptr();
     let slen = s.len();
-    let mut total: result = 0;
+    let mut total = 0;
+    let mut loc = loc;
 
     macro_rules! process_cell {
         () => {{
             let cell_ptr = new_ptr.add(loc);
-            unsafe { std::intrinsics::assume(*cell_ptr as result > 0) }
-            total = total.unchecked_add(*cell_ptr as result);
+            total += *cell_ptr as u32;
             *cell_ptr = 0;
         }};
     }
@@ -39,7 +36,7 @@ unsafe fn inner(s: &[u8]) -> result {
         }};
     }
 
-    loop {
+    'outer: loop {
         // Up
         loop {
             check_bounds!(loc.wrapping_sub(WIDTH), |n| n >= slen);
@@ -60,7 +57,7 @@ unsafe fn inner(s: &[u8]) -> result {
 }
 
 #[inline(always)]
-pub fn run(input: &[u8]) -> result {
+pub fn run(input: &[u8]) -> u32 {
     unsafe { inner(input) }
 }
 

@@ -22,6 +22,7 @@ pub fn part2(input: &str) -> u64 {
     unsafe { inner_part2(input) }
 }
 
+#[allow(unused)]
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u64 {
@@ -125,6 +126,7 @@ unsafe fn inner_part1(input: &str) -> u64 {
     collect(&input, &edges)
 }
 
+#[allow(unused)]
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
@@ -240,76 +242,224 @@ unsafe fn inner_part2(input: &str) -> u64 {
 
 #[inline(always)]
 unsafe fn collect(input: &[u8; 141 + 141 * 141 + 32], extra: &[i8; 141 + 141 * 141 + 32]) -> u64 {
-    let mut uf = [MaybeUninit::<(u32, u32)>::uninit(); 141 + 140 * 141];
-    let uf = uf.as_mut_ptr().cast::<(u32, u32)>();
-    let mut tot = 0;
-    let mut off = 141;
-
-    let mut goal = 141 + 140;
-
-    while goal < 141 + 140 * 141 {
-        while off < goal {
-            let c = *input.get_unchecked(off);
-            debug_assert_ne!(c, b'\n');
-            let e = *extra.get_unchecked(off) as u8 as u64;
-
-            if *input.get_unchecked(off - 1) == c {
-                let mut root = off - 1;
-                let mut t = &mut *uf.add(root);
-                if t.0 == 0 {
-                    root = t.1 as _;
-                    t = &mut *uf.add(root);
-                }
-                debug_assert_ne!((*uf.add(root)).0, 0);
-                t.0 += 1;
-                tot += t.0 as u64 * e as u64 + t.1 as u64;
-                t.1 += e as u32;
-                *uf.add(off) = (0, root as _);
-
-                if *input.get_unchecked(off - 141) == c {
-                    'union: {
-                        let mut root2 = off - 141;
-                        if root != root2 {
-                            let mut t2 = &mut *uf.add(root2);
-                            while t2.0 == 0 {
-                                root2 = t2.1 as _;
-                                if root != root2 {
-                                    t2 = &mut *uf.add(root2);
-                                } else {
-                                    break 'union;
-                                }
-                            }
-                            debug_assert_ne!((*uf.add(root2)).0, 0);
-                            tot += t.0 as u64 * t2.1 as u64 + t.1 as u64 * t2.0 as u64;
-                            t.0 += t2.0;
-                            t.1 += t2.1;
-                            *t2 = (0, root as _);
-                        }
-                    }
-                }
-            } else if *input.get_unchecked(off - 141) == c {
-                let mut root = off - 141;
-                let mut t = &mut *uf.add(root);
-                while t.0 == 0 {
-                    root = t.1 as _;
-                    t = &mut *uf.add(root);
-                }
-                debug_assert_ne!((*uf.add(root)).0, 0);
-                t.0 += 1;
-                tot += t.0 as u64 * e + t.1 as u64;
-                t.1 += e as u32;
-                *uf.add(off) = (0, root as _);
-            } else {
-                *uf.add(off) = (1, e as _);
-                tot += e;
-            }
-
-            off += 1;
-        }
-        debug_assert_eq!(*input.get_unchecked(off), b'\n');
-        off += 1;
-        goal += 141;
+    let mut lens = [140 / par::NUM_THREADS; par::NUM_THREADS];
+    for i in 0..140 % par::NUM_THREADS {
+        lens[i] += 1;
+    }
+    let mut poss = [0; par::NUM_THREADS + 1];
+    for i in 0..par::NUM_THREADS {
+        poss[i + 1] = poss[i] + lens[i];
     }
 
-    tot
+    let mut uf = [MaybeUninit::<u64>::uninit(); 141 + 140 * 141];
+    let uf = uf.as_mut_ptr().cast::<u64>();
+
+    let acc = std::sync::atomic::AtomicU64::new(0);
+    par::par(|idx| {
+        let mut tot = 0;
+
+        // First line: no union with top
+        {
+            let y = poss[idx];
+            let mut prev_c = u8::MAX;
+            let mut root = usize::MAX;
+            for x in 0..140 {
+                let off = 141 + 141 * y + x;
+
+                let c = *input.get_unchecked(off);
+                let e = *extra.get_unchecked(off) as u8 as u64;
+
+                *uf.add(off) = root as u64;
+                if c != prev_c {
+                    prev_c = c;
+                    root = off;
+                    *uf.add(off) = 0;
+                }
+
+                let t = &mut *uf.add(root).cast::<[u32; 2]>();
+                t[1] += 1;
+                tot += t[1] as u64 * e as u64 + t[0] as u64;
+                t[0] += e as u32;
+            }
+        }
+
+        for y in poss[idx] + 1..poss[idx + 1] {
+            let mut prev_c = u8::MAX;
+            let mut root = usize::MAX;
+            let mut top_prev = u32::MAX as u64;
+
+            for x in 0..140 {
+                let off = 141 + 141 * y + x;
+
+                let c = *input.get_unchecked(off);
+                let e = *extra.get_unchecked(off) as u8 as u64;
+
+                *uf.add(off) = root as u64;
+                if c != prev_c {
+                    prev_c = c;
+                    root = off;
+                    *uf.add(off) = 0;
+                }
+
+                let t = &mut *uf.add(root).cast::<[u32; 2]>();
+                t[1] += 1;
+                tot += t[1] as u64 * e as u64 + t[0] as u64;
+                t[0] += e as u32;
+
+                let top = off - 141;
+                let tt = *uf.add(top);
+                if tt != top_prev {
+                    top_prev = top as u64;
+                }
+
+                if (top_prev == top as u64 || root == off) && *input.get_unchecked(top) == c {
+                    let mut tt_root = top;
+                    while *uf.add(tt_root).cast::<u32>().add(1) == 0 {
+                        tt_root = *uf.add(tt_root).cast::<u32>() as usize;
+                    }
+
+                    if tt_root != root {
+                        let t2 = &mut *uf.add(tt_root).cast::<[u32; 2]>();
+
+                        tot += t[1] as u64 * t2[0] as u64 + t[0] as u64 * t2[1] as u64;
+                        t[1] += t2[1];
+                        t[0] += t2[0];
+
+                        *uf.add(tt_root) = root as u64;
+                    }
+                }
+            }
+        }
+
+        const LEVELS: usize = par::NUM_THREADS.ilog2() as usize;
+        const { assert!(1 << LEVELS == par::NUM_THREADS) };
+        for i in 0..LEVELS {
+            if idx & (1 << i) != 0 {
+                break;
+            }
+
+            let next = idx + (1 << i);
+            par::wait(next);
+            let y = poss[next];
+
+            let mut prev_c = u8::MAX;
+            let mut root = usize::MAX;
+            let mut top_prev = u32::MAX as u64;
+
+            for x in 0..140 {
+                let off = 141 + 141 * y + x;
+                let top = off - 141;
+
+                let c = *input.get_unchecked(off);
+
+                let mut c_changed = false;
+                if c != prev_c {
+                    prev_c = c;
+                    c_changed = true;
+
+                    root = off;
+                    while *uf.add(root).cast::<u32>().add(1) == 0 {
+                        root = *uf.add(root).cast::<u32>() as usize;
+                    }
+                }
+
+                let tt = *uf.add(top);
+                if tt != top_prev {
+                    top_prev = top as u64;
+                }
+
+                if (top_prev == top as u64 || c_changed) && *input.get_unchecked(top) == c {
+                    let mut tt_root = top;
+                    while *uf.add(tt_root).cast::<u32>().add(1) == 0 {
+                        tt_root = *uf.add(tt_root).cast::<u32>() as usize;
+                    }
+
+                    if tt_root != root {
+                        let t = &mut *uf.add(root).cast::<[u32; 2]>();
+                        let t2 = &mut *uf.add(tt_root).cast::<[u32; 2]>();
+
+                        tot += t[1] as u64 * t2[0] as u64 + t[0] as u64 * t2[1] as u64;
+                        t[1] += t2[1];
+                        t[0] += t2[0];
+
+                        *uf.add(tt_root) = root as u64;
+                    }
+                }
+            }
+        }
+
+        if idx & 1 == 0 {}
+
+        acc.fetch_add(tot, std::sync::atomic::Ordering::Relaxed);
+    });
+    acc.into_inner()
+}
+
+mod par {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    pub fn wait(i: usize) {
+        loop {
+            let ptr = WORK[i].0.load(Ordering::Acquire);
+            if ptr.is_null() {
+                break;
+            }
+            std::hint::spin_loop();
+        }
+    }
+
+    #[inline(always)]
+    fn wait_all() {
+        for i in 1..NUM_THREADS {
+            wait(i);
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait_all();
+    }
 }

@@ -62,7 +62,14 @@ unsafe fn inner_part1(input: &str) -> u64 {
         }};
     }
 
-    static mut OPS: [[u8; 3]; 224] = [[u8::MAX; 3]; 224];
+    static mut OPS: [[u8; 3]; 224] = {
+        let mut ops = [[u8::MAX; 3]; 224];
+
+        ops[46] = [46, 0, 46];
+        ops[47] = [47, 0, 47];
+
+        ops
+    };
     let ops = &mut OPS;
 
     let end = input.as_ptr().add(input.len());
@@ -149,8 +156,14 @@ unsafe fn inner_part1(input: &str) -> u64 {
             ([fuel:] $n:expr) => {
                 *values.get_unchecked($n as usize)
             };
+            ([fuel: c $($rest:tt)*] $n:expr) => {{
+                let n = $n as usize;
+                let v = calc_rec!(force [fuel: $($rest)*] n);
+                *values.get_unchecked_mut(n) = v;
+                v
+            }};
             ([fuel: f $($rest:tt)*] $n:expr) => {{
-                let n = $n  as usize;
+                let n = $n as usize;
                 let mut v = *values.get_unchecked(n);
                 if v == u8::MAX {
                     v = calc_rec!(force [fuel: $($rest)*] n);
@@ -160,7 +173,7 @@ unsafe fn inner_part1(input: &str) -> u64 {
             }};
         }
 
-        out |= (calc_rec!(force [fuel: f f f f f] z) as u64) << z;
+        out |= (calc_rec!(force [fuel: f f f f] z) as u64) << z;
     }
 
     out

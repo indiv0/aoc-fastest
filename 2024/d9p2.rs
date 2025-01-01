@@ -10,43 +10,28 @@
 //   - Uses the fact that data will always be removed from the first element of the vector to make
 //     this possible
 // - SoA for the spans
-// - The usual assumptions from input
-//   - hard-code input size
-//   - hard-code the max number of elements that could appear in one span together
-//     - For my input 4 was enough, but technically it would have to be 9 to cover all possible
-//       inputs (9 1-size moves into a 9-free-space span)
-//   - assume that we'll never move an element into the last [SIMD vector size] spans to avoid
-//     having to do remainder checking in the inner SIMD loop
-//     - probably also could have just added some padding elements to the free space array to work
-//       around this
 // - aligned input vector as well as data vectors for counts, free lists, and minivecs which
 //   facilitates:
 // - SIMD parsing
-//   - de-interleaves sizes + free spaces into separate arrays and writes out with SIMD
-//   - compiles into a beautiful 10x unrolled loop of basically pure SIMD
+//   - de-interleaves sizes + free spaces into separate arrays and writes out with SIMD where
+//     possible
 // - MiniVec; specialized capped-sized-vec that stores stuff inline.
+//   - uses uninitialized memory for elements that haven't been set
 //   - all methods custom-built and unsafe with no checks
 //   - TRIED the fancy const impl that pre-computes the vector here with lens and IDs pre-set, but
 //     memcpy overhead was greater than savings
-//   - clever `pop_front` impl to avoid having to shift elements down
 // - `start_span_ix_by_needed_size` to keep track of the earliest possible location of a big enough
 //   free space for every size
 //   - TRIED the fancy impl. that max's the val of all larger buckets as well, but turned out to be
 //     way slower (especially when SIMD was enabled)
 // - SIMD for finding the first free slot which is large enough
-//   - as mentioned later, loading + checking 8 bytes at a time seems to be the fastest (even though
-//     the checks themselves are done with SIMD instructions on a 128-bit register, the top half is
-//     zeroed).
+//   - dubious benefit; within a few percent in any case.
 // - target-cpu=znver3
 // - constant-time checksumming
 // - `max_unmoved_src_id` accounting
 //   - allows fully empty chunks at the end to be skipped during checksum computation
 // - `finished_digit_count` bookkeeping
 //   - allows for early exit of the main loop after we've found a stopping place for every char
-//   - includes code that marks all bigger digits finished as well as the current digit since if
-//     there's no space left to fit 5, no way you can fit 6+ either.
-//     - This emits a `memset` call I can't get rid of, but since this path is only going to get hit
-//       a few times it's cold enough to not matter + be worth it
 // - using smaller int sizes for data which allows more items to be considered by SIMD as well as
 //   reducing memory footprint and potentially reducing cache pressure
 // - avoid storing counts inside the minivec at all.  instead, reference back to main counts vec
@@ -55,8 +40,6 @@
 //     need allocate one extra slot in the counts vec and then set the id to that.
 // - SIMD initialization for slot vectors.  Amazing stuff. (this put me back in the lead from
 //   giooschi on the rust discord speed leaderboard)
-//   - manual padding to force rust to keep all of the u16s 16bit aligned and keep the minivecs
-//     32bit-aligned
 // - made `start_span_ix_by_needed_size` `[u16; 10]` instead of `[usize; 10]`
 // - switch `arr.get_unchecked_mut(x..).fill(u16::MAX)` to `for i in x.. { arr[i] = u16::MAX }`
 //   which... caused a 20% improvement on the bot??
@@ -75,23 +58,17 @@
 //   - turns out that u8x8 faster than u8x16 faster than u8x32
 //   - u8x8 is pretty slightly - but significantly - faster than u8x16 on both local and benchmark
 //     machine
-//   - the same SIMD instruction, operating on 128-bit XMM register, is used for u8x8 case, just
-//     with top bits zeroed
+//   - the same SIMD instruction, operating on 128-bit XMM register, is used -
 //   - the overhead of fetching just 64 extra bytes seems to outweigh the cost of having less chance
 //     of finding the needle in the first vector
-// - TRIED to initialize all spans to contain the empty elem ID and then just compute checksums on
-//   all elements.
-//   - turns out that most spans seem to have very few items (which makes sense tbh) so the work of
-//     computing checksums for those empty slots greatly outweighed any benefit of avoiding the
-//     dynamic checksum count etc.
 
 use std::{
     fmt::Display,
-    simd::{cmp::SimdPartialOrd, u16x16, u16x2, u8x32, u8x64, u8x8},
+    simd::{cmp::SimdPartialOrd, u16x16, u16x32, u8x32, u8x64, u8x8},
 };
 
 #[cfg(feature = "local")]
-pub const INPUT: &'static [u8; 20_000] = include_bytes!("../inputs/day9.txt");
+pub const INPUT: &'static [u8] = include_bytes!("../inputs/day9.txt");
 
 fn parse_digit(c: u8) -> u8 {
     c - 48
@@ -116,10 +93,7 @@ fn parse_input(input: &[u8]) -> Vec<(u32, u32)> {
 #[repr(C, align(64))]
 struct AlignToSixtyFour([u8; 64]);
 
-/// This creates a vector with its data aligned to 64 bytes.  This allows us to use faster aligned
-/// loads for SIMD operations.
-///
-/// adapted from: https://stackoverflow.com/a/60180226/3833068
+// adapted from: https://stackoverflow.com/a/60180226/3833068
 fn aligned_vec<T>(n_bytes: usize) -> Vec<T> {
     assert_eq!(
         std::mem::size_of::<AlignToSixtyFour>() % std::mem::size_of::<T>(),
@@ -175,80 +149,208 @@ fn parse_input_p2(input: &[u8]) -> (Vec<u8>, Vec<u8>, Vec<MiniVec>) {
 
     let mut orig_counts: Vec<u8> = aligned_vec(id_count + 1);
     unsafe { orig_counts.set_len(id_count + 1) };
-    // this sets a special element at `orig_counts[MAX_ID + 1]` is used to facilitate efficient
-    // `pop_front()` of the minivecs that happens when one of the files is moved down to a different
-    // span.
-    //
-    // The ID of the removed slot is set to `MAX_ID + 1` which we hard-code to zero here.  This has a
-    // result of causing the computed checksum for that slot to be zero while avoiding the need to do
-    // complicated stuff like shift elements down, add state to track whether the first element has
-    // been removed, etc.
     unsafe { *orig_counts.get_unchecked_mut(MAX_ID + 1) = 0 };
     let mut empty_spaces: Vec<u8> = aligned_vec(id_count);
     unsafe { empty_spaces.set_len(id_count) };
-    let mut slots: Vec<MiniVec> = aligned_vec(id_count * std::mem::size_of::<MiniVec>());
+    let mut slots: Vec<MiniVec> = aligned_vec(id_count * std::mem::size_of::<MiniVec>()); // Vec::with_capacity(id_count);
     unsafe { slots.set_len(id_count) };
     // initialize the memory layout for the minivecs manually using SIMD.
     //
     // this sets them all up to have a length of one with a single element corresponding to file index
     // `i` as the first and only element.
-    unsafe {
-        let data: [u16; 2] = [1u16, 0u16];
-        /// how many minivecs are set per SIMD store
-        const CHUNK_SIZE: usize = 2;
-        let mut data = u16x2::from_array(data);
-        let to_add: [u16; 2] = [0u16, 1u16];
-        debug_assert_eq!(slots.len() % CHUNK_SIZE, 0);
-        let to_add = u16x2::from_array(to_add);
 
-        let start = slots.as_mut_ptr();
-        for i in 0..slots.len() {
-            let ptr = start.add(i) as *mut u16x2;
-            std::ptr::write(ptr, data);
+    const CHUNK_SIZE: usize = 4;
+    debug_assert_eq!(slots.len() % CHUNK_SIZE, 0);
+
+    unsafe {
+        let data: [u16; 32] = std::mem::transmute([
+            MiniVec {
+                len: 1,
+                elements: [
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 1,
+                elements: [
+                    Slot { id: 1 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 1,
+                elements: [
+                    Slot { id: 2 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 1,
+                elements: [
+                    Slot { id: 3 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+        ]);
+        let mut data = u16x32::from_array(data);
+        let to_add: [u16; 32] = std::mem::transmute([
+            MiniVec {
+                len: 0,
+                elements: [
+                    Slot {
+                        id: CHUNK_SIZE as u16,
+                    },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 0,
+                elements: [
+                    Slot {
+                        id: CHUNK_SIZE as u16,
+                    },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 0,
+                elements: [
+                    Slot {
+                        id: CHUNK_SIZE as u16,
+                    },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+            MiniVec {
+                len: 0,
+                elements: [
+                    Slot {
+                        id: CHUNK_SIZE as u16,
+                    },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                    Slot { id: 0 },
+                ],
+                padding: 0,
+            },
+        ]);
+        assert_eq!(std::mem::size_of::<MiniVec>(), 16);
+        assert_eq!(
+            std::mem::size_of::<MiniVec>() * 2,
+            std::mem::size_of::<u16x16>()
+        );
+        assert_eq!(
+            std::mem::size_of::<MiniVec>() * 4,
+            std::mem::size_of::<u16x32>()
+        );
+        let to_add = u16x32::from_array(to_add);
+
+        let start = slots.as_mut_ptr() as *mut u16x32;
+        for chunk_ix in 0..(slots.len() / CHUNK_SIZE) {
+            let out_ptr = start.add(chunk_ix);
+            out_ptr.write(data);
             data += to_add;
 
-            debug_assert_eq!(slots[i].len(), 1);
-            debug_assert_eq!(slots[i].elements()[0], i as _);
+            debug_assert_eq!(
+                &slots[chunk_ix * 2..chunk_ix * 2 + 4],
+                &[
+                    MiniVec {
+                        len: 1,
+                        elements: [
+                            Slot {
+                                id: (chunk_ix * 2 + 0) as u16
+                            },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                        ],
+                        padding: 0,
+                    },
+                    MiniVec {
+                        len: 1,
+                        elements: [
+                            Slot {
+                                id: (chunk_ix * 2 + 1) as u16
+                            },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                        ],
+                        padding: 0,
+                    },
+                    MiniVec {
+                        len: 1,
+                        elements: [
+                            Slot {
+                                id: (chunk_ix * 2 + 2) as u16
+                            },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                        ],
+                        padding: 0,
+                    },
+                    MiniVec {
+                        len: 1,
+                        elements: [
+                            Slot {
+                                id: (chunk_ix * 2 + 3) as u16
+                            },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                            Slot { id: 0 },
+                        ],
+                        padding: 0,
+                    }
+                ]
+            )
         }
-        // for chunk_ix in 0..(slots.len() / CHUNK_SIZE) {
-        //   let out_ptr = start.add(chunk_ix);
-        //   out_ptr.write(data);
-        //   data += to_add;
-
-        //   debug_assert_eq!(
-        //     &slots[chunk_ix * CHUNK_SIZE..chunk_ix * CHUNK_SIZE + CHUNK_SIZE],
-        //     &[
-        //       MiniVec {
-        //         len: 1,
-        //         elements: [
-        //           Slot {
-        //             id: (chunk_ix * CHUNK_SIZE) as u16
-        //           },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //         ],
-        //         padding: 0,
-        //       },
-        //       MiniVec {
-        //         len: 1,
-        //         elements: [
-        //           Slot {
-        //             id: (chunk_ix * CHUNK_SIZE + 1) as u16
-        //           },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //           Slot { id: 0 },
-        //         ],
-        //         padding: 0,
-        //       }
-        //     ]
-        //   )
-        // }
 
         // for i in 0..id_count {
         //   slots.get_unchecked_mut(i).len = 1;
@@ -395,28 +497,19 @@ impl Slot {
 
 #[repr(align(16))]
 #[derive(Clone, Debug, PartialEq)]
-struct MiniVec([u16; 8]);
+struct MiniVec {
+    pub len: u16,
+    pub elements: [Slot; 6],
+    pub padding: u16,
+}
 
 impl MiniVec {
-    fn len(&self) -> u16 {
-        self.0[0]
-    }
-
-    fn elements<'a>(&'a self) -> &'a [u16; 6] {
-        unsafe { std::mem::transmute((self.0.as_ptr() as *const u16).add(1)) }
-    }
-
-    fn elements_mut<'a>(&'a mut self) -> &'a mut [u16; 6] {
-        unsafe { std::mem::transmute((self.0.as_mut_ptr() as *mut u16).add(1)) }
-    }
-
     fn push(&mut self, item: Slot) {
         unsafe {
-            let len = self.len();
-            *self.elements_mut().get_unchecked_mut(len as usize) = item.id;
+            *self.elements.get_unchecked_mut(self.len as usize) = item;
         }
-        self.0[0] += 1;
-        debug_assert!(self.len() as usize <= self.elements().len());
+        self.len += 1;
+        debug_assert!(self.len as usize <= self.elements.len());
     }
 
     fn pop_front(&mut self) {
@@ -428,20 +521,14 @@ impl MiniVec {
         // }
         // self.len -= 1;
 
-        // \/ does not help
-        // if self.len == 1 {
-        //   self.len = 0;
-        //   return;
-        // }
-
         // we should only ever mutate the vector once
-        debug_assert!(self.elements()[0] != MAX_ID as u16 + 1);
+        debug_assert!(self.elements[0].id != MAX_ID as u16 + 1);
         // this is a nice trick I came up with to accomplish the equivalent
-        self.elements_mut()[0] = MAX_ID as u16 + 1;
+        self.elements[0].id = MAX_ID as u16 + 1;
     }
 
     fn as_slice(&self) -> &[Slot] {
-        unsafe { std::mem::transmute(self.elements().get_unchecked(..self.len() as usize)) }
+        unsafe { self.elements.get_unchecked(..self.len as usize) }
     }
 }
 

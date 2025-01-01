@@ -7,71 +7,11 @@
 
 use std::simd::prelude::*;
 
-use rayon::iter::{IndexedParallelIterator, ParallelIterator};
-use rayon::slice::ParallelSlice;
-
 pub fn run(input: &str) -> i64 {
     part2(input) as i64
 }
-
-pub fn part1(input: &str) -> u32 {
-    unsafe { inner_part1(input) }
-}
-
 pub fn part2(input: &str) -> u32 {
     unsafe { inner_part2(input) }
-}
-
-#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
-#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
-unsafe fn inner_part1(input: &str) -> u32 {
-    let input = input.as_bytes();
-
-    let mut offset = 0;
-    let start = loop {
-        let block = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
-        if let Some(start_pos) = block.simd_eq(u8x32::splat(b'^')).first_set() {
-            break offset + start_pos;
-        }
-        offset += 32;
-    };
-
-    let mut seen = [0u64; (130 * 131 + 63) / 64];
-    let mut seen_count = 0;
-    let mut pos = start;
-    seen[pos / 64] |= 1 << (pos % 64);
-    seen_count += 1;
-
-    macro_rules! move_and_check {
-        ($next:ident: d[$d:expr] check[$check:expr]) => {
-            loop {
-                let $next = pos.wrapping_add($d);
-                if $check {
-                    return seen_count;
-                }
-
-                if *input.get_unchecked($next) == b'#' {
-                    break;
-                }
-
-                pos = $next;
-
-                let seen_elem = seen.get_unchecked_mut(pos / 64);
-                let seen_mask = 1 << (pos % 64);
-                if *seen_elem & seen_mask == 0 {
-                    *seen_elem |= seen_mask;
-                    seen_count += 1;
-                }
-            }
-        };
-    }
-
-    loop {
-        move_and_check!(next: d[-131isize as usize] check[next >= 131 * 130]);
-        move_and_check!(next: d[1 as usize]         check[next % 131 == 130]);
-        move_and_check!(next: d[131isize as usize]  check[next >= 131 * 130]);
-        move_and_check!(next: d[-1isize as usize]   check[next % 131 == 130]);
-    }
 }
 
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
@@ -297,38 +237,40 @@ unsafe fn inner_part2(input: &str) -> u32 {
         move_and_check!(-1isize as usize, next % 131 == 130, RIGHT_M);
     }
 
-    return TO_CHECK
-        .get_unchecked(..to_check_len)
-        .par_chunks(to_check_len.div_ceil(16))
-        .with_max_len(1)
-        .map(|chunk| {
-            let mut move_map_raw = move_map_raw;
-            let move_map = &mut move_map_raw[..(out_rock_idx + 1) << 2];
+    let sum = std::sync::atomic::AtomicU32::new(0);
+    let to_check = TO_CHECK.get_unchecked(..to_check_len);
+    let chunk_len = to_check_len.div_ceil(par::NUM_THREADS);
+    par::par(|idx| {
+        let chunk = to_check.get_unchecked(chunk_len * idx..);
+        let chunk = chunk.get_unchecked(..std::cmp::min(chunk.len(), chunk_len));
 
-            let mut count = 0;
-            for &mov_pos in chunk {
-                let (pos, dir) = (mov_pos >> 2, mov_pos & 0b11);
+        let mut move_map_raw = move_map_raw;
+        let move_map = &mut move_map_raw[..(out_rock_idx + 1) << 2];
 
-                let is_loop = check_loop(
-                    &rocks_x,
-                    &rocks_y,
-                    &rocksx_id,
-                    &rocksx_len,
-                    &rocksy_id,
-                    &rocksy_len,
-                    rocks_len,
-                    move_map,
-                    pos,
-                    dir,
-                );
+        let mut count = 0;
+        for &mov_pos in chunk {
+            let (pos, dir) = (mov_pos >> 2, mov_pos & 0b11);
 
-                if is_loop {
-                    count += 1;
-                }
+            let is_loop = check_loop(
+                &rocks_x,
+                &rocks_y,
+                &rocksx_id,
+                &rocksx_len,
+                &rocksy_id,
+                &rocksy_len,
+                rocks_len,
+                move_map,
+                pos,
+                dir,
+            );
+
+            if is_loop {
+                count += 1;
             }
-            count
-        })
-        .sum();
+        }
+        sum.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+    return sum.into_inner();
 
     #[inline(always)]
     unsafe fn check_loop(
@@ -587,5 +529,69 @@ unsafe fn inner_part2(input: &str) -> u32 {
         }
 
         cycle
+    }
+}
+
+mod par {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    fn wait() {
+        for i in 1..NUM_THREADS {
+            loop {
+                let ptr = WORK[i].0.load(Ordering::Acquire);
+                if ptr.is_null() {
+                    break;
+                }
+                std::hint::spin_loop();
+            }
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait();
     }
 }

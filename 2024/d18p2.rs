@@ -1,4 +1,4 @@
-// Originally by: caavik
+// Original by: caavik
 use std::fmt;
 
 pub fn run(input: &str) -> impl fmt::Display {

@@ -1,169 +1,342 @@
-// Original by: alion02
-#![feature(thread_local, portable_simd, core_intrinsics)]
-#![allow(
-    clippy::precedence,
-    clippy::missing_transmute_annotations,
-    clippy::pointers_in_nomem_asm_block,
-    clippy::erasing_op,
-    static_mut_refs,
-    internal_features,
-    clippy::missing_safety_doc,
-    clippy::identity_op,
-    clippy::zero_prefixed_literal
-)]
+// Original by: giooschi
+#![allow(unused_attributes)]
+#![allow(static_mut_refs)]
+#![feature(portable_simd)]
+#![feature(avx512_target_feature)]
+#![feature(slice_ptr_get)]
+#![feature(array_ptr_get)]
+#![feature(core_intrinsics)]
+#![feature(int_roundings)]
 
-#[allow(unused)]
-use std::{
-    arch::{
-        asm,
-        x86_64::{
-            __m128i, __m256i, _bextr2_u32, _mm256_madd_epi16, _mm256_maddubs_epi16,
-            _mm256_movemask_epi8, _mm256_shuffle_epi8, _mm_hadd_epi16, _mm_madd_epi16,
-            _mm_maddubs_epi16, _mm_minpos_epu16, _mm_movemask_epi8, _mm_packus_epi16,
-            _mm_packus_epi32, _mm_shuffle_epi8, _mm_testc_si128, _pdep_u32, _pext_u32, _pext_u64,
-        },
-    },
-    array,
-    fmt::Display,
-    hint::assert_unchecked,
-    intrinsics::{likely, unlikely},
-    mem::{offset_of, transmute, MaybeUninit},
-    ptr,
-    simd::prelude::*,
-    slice,
+use std::arch::x86_64::*;
+use std::simd::prelude::*;
+
+pub fn run(input: &str) -> i64 {
+    part1(input) as i64
+}
+
+#[inline(always)]
+pub fn part1(input: &str) -> u64 {
+    unsafe { inner_part1(input) }
+}
+
+#[inline(always)]
+pub fn part2(input: &str) -> u64 {
+    unsafe { inner_part2(input) }
+}
+
+static LUT: [usize; 128] = {
+    let mut lut = [usize::MAX; 128];
+    lut[b'r' as usize] = 0;
+    lut[b'g' as usize] = 1;
+    lut[b'b' as usize] = 2;
+    lut[b'u' as usize] = 3;
+    lut[b'w' as usize] = 4;
+    lut
 };
 
-#[inline]
-unsafe fn inner1(s: &[u8]) -> u32 {
-    static mut TRIE: [[u16; 6]; 4096] = [[0; 6]; 4096];
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
+unsafe fn inner_part1(input: &str) -> u64 {
+    let input = input.as_bytes();
 
-    let mut ptr = s.as_ptr();
-    let trie = TRIE.as_mut_ptr();
-    *trie = [0; 6];
-    let mut len = 0;
+    let mut tries = [[0u16; 5]; 1024];
+    let mut tries_end = [false; 1024];
+    let mut tries_len = 1;
 
-    macro_rules! hash {
-        ($byte:expr) => {
-            _pext_u32($byte as u32, 83).wrapping_sub(10)
-        };
-    }
-
-    macro_rules! is_lf {
-        ($hash:expr) => {
-            $hash == 2u32.wrapping_sub(10)
-        };
-    }
-
+    let mut ptr = input.as_ptr();
     loop {
-        let mut hash = hash!(*ptr);
-        let mut curr = 0;
-        loop {
-            ptr = ptr.add(1);
-            let next = trie.byte_add(curr).cast::<u16>().add(hash as usize);
-            if *next == 0 {
-                len += 3;
-                *next = len;
-                *trie.byte_add(len as usize * 4) = [0; 6];
-            }
+        let n = ptr.cast::<u64>().read_unaligned();
+        let mask = _pext_u64(n, u64::from_ne_bytes([0b00001000; 8]) | (1 << 62));
+        let len = mask.trailing_zeros();
+        std::hint::assert_unchecked(len > 0 && len <= 8);
+        let end = ptr.add(len as usize);
 
-            hash = hash!(*ptr);
-            curr = *next as usize * 4;
-            if (hash as i32) < 0 {
+        let mut trie = 0;
+        loop {
+            // let i = _pext_u64(*ptr as u64 + 13, 0b10010010) - 1;
+            let i = *LUT.get_unchecked(*ptr as usize);
+
+            let mut next = *tries.get_unchecked(trie).get_unchecked(i as usize);
+            if next == 0 {
+                next = tries_len;
+                tries_len += 1;
+            }
+            *tries.get_unchecked_mut(trie).get_unchecked_mut(i as usize) = next;
+            trie = next as usize;
+
+            ptr = ptr.add(1);
+            if ptr == end {
                 break;
             }
         }
 
+        *tries_end.get_unchecked_mut(trie) = true;
+
         ptr = ptr.add(2);
-        assert!(*ptr > 64);
-        *trie.byte_add(curr).cast::<u16>().add(2) = 1;
-        if is_lf!(hash) {
+        if *ptr.sub(2) == b'\n' {
             break;
         }
     }
 
-    let mut total = 0;
+    let mut lines = [0; 400];
+    let mut lines_len = 0;
+    let mut offset = ptr.offset_from(input.as_ptr()) as usize - 1;
+    while offset + 32 < input.len() {
+        let b = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
+        let mut m = b.simd_eq(u8x32::splat(b'\n')).to_bitmask();
+        while m != 0 {
+            let pos = m.trailing_zeros();
+            m &= !(1 << pos);
+            *lines.get_unchecked_mut(lines_len) = offset + pos as usize + 1;
+            lines_len += 1;
+        }
+        offset += 32;
+    }
+    while offset + 1 < input.len() {
+        if *input.get_unchecked(offset) == b'\n' {
+            *lines.get_unchecked_mut(lines_len) = offset + 1;
+            lines_len += 1;
+        }
+        offset += 1;
+    }
 
-    asm!(
-        "mov {saved_rsp}, rsp",
-        "jmp 20f",
+    let sum = std::sync::atomic::AtomicU64::new(0);
+    let size = 400 / 16;
+    par::par(|idx| {
+        let chunk = lines.get_unchecked(size * idx..size * (idx + 1));
+        let mut count = 0;
 
-    "203:",
-        "inc {i:e}",
-        "lea {node}, [{trie} + {tmp} * 4]",
-    "200:",
-        "cmp byte ptr[{node} + 4], 0",
-        "je 201f", // try continuing
-        "bts {seen}, {i}",
-        "jc 201f", // memoized: can't finish pattern here
-        "cmp byte ptr[{ptr} + {i}], {lf}",
-        "je 202f", // success
-        // try finishing this pattern
-        "push {i}",
-        "push {node}",
-        "mov {node}, {trie}",
-        "call 201f",
-        "pop {node}",
-        "pop {i}",
-    "201:",
-        "movzx {hash:e}, byte ptr[{ptr} + {i}]",
-        "pext {hash:e}, {hash:e}, {hash_mask:e}",
-        "sub {hash:e}, {hash_offset}",
-        "js 204f", // in the middle of a pattern but towel is done
-        "movzx {tmp:e}, word ptr[{node} + {hash} * 2]",
-        "test {tmp:e}, {tmp:e}",
-        "jne 203b", // continue
-    "204:",
-        "ret", // dead end
+        for &offset in chunk {
+            let mut queue = 1u64;
+            let mut to_see = u64::MAX;
+            let base_ptr = input.as_ptr().add(offset);
 
-    "202:",
-        "mov rsp, {saved_rsp}",
-        "inc {total:e}",
-        "lea {ptr}, [{ptr} + {i} + 1]",
-        "cmp {ptr}, {end}",
-        "je 22f",
-    "20:",
-        "mov {node}, {trie}",
-        "xor {seen:e}, {seen:e}",
-        "xor {i:e}, {i:e}",
-        "call 201b",
-    "21:",
-        "inc {ptr}",
-        "cmp byte ptr[{ptr}], {lf}",
-        "jne 21b",
-        "inc {ptr}",
-        "cmp {ptr}, {end}",
-        "jne 20b",
-    "22:",
+            loop {
+                let pos = 63 - (queue & to_see).leading_zeros();
+                to_see &= !(1 << pos);
 
-        saved_rsp = out(reg) _,
-        seen = out(reg) _,
-        i = out(reg) _,
-        ptr = inout(reg) ptr => _,
-        end = in(reg) s.as_ptr_range().end,
-        hash = out(reg) _,
-        node = out(reg) _,
-        tmp = out(reg) _,
-        trie = in(reg) trie,
-        hash_mask = in(reg) 83,
-        hash_offset = const 10,
-        total = inout(reg) total,
-        lf = const b'\n',
-    );
+                let mut ptr = base_ptr.add(pos as usize);
+                let mut trie = 0;
 
-    total
+                loop {
+                    let i = *LUT.get_unchecked(*ptr as usize);
+
+                    trie = *tries.get_unchecked(trie).get_unchecked(i) as usize;
+                    if trie == 0 {
+                        break;
+                    }
+
+                    ptr = ptr.add(1);
+
+                    let b = *tries_end.get_unchecked(trie) as u64;
+                    queue |= b << ptr.offset_from(base_ptr) as u64;
+
+                    if *ptr == b'\n' {
+                        break;
+                    }
+                }
+
+                if *ptr == b'\n' && *tries_end.get_unchecked(trie) {
+                    count += 1;
+                    break;
+                }
+
+                if queue & to_see == 0 {
+                    break;
+                }
+            }
+        }
+
+        sum.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+
+    sum.into_inner()
 }
 
-#[inline]
-unsafe fn inner2(s: &[u8]) -> u64 {
-    0
+#[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
+#[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
+unsafe fn inner_part2(input: &str) -> u64 {
+    let input = input.as_bytes();
+
+    let mut tries = [[0u16; 5]; 1024];
+    let mut tries_end = [false; 1024];
+    let mut tries_len = 1;
+
+    let mut ptr = input.as_ptr();
+    loop {
+        let n = ptr.cast::<u64>().read_unaligned();
+        let mask = _pext_u64(n, u64::from_ne_bytes([0b00001000; 8]) | (1 << 62));
+        let len = mask.trailing_zeros();
+        let end = ptr.add(len as usize);
+
+        let mut trie = 0;
+        loop {
+            // let i = _pext_u64(*ptr as u64 + 13, 0b10010010) - 1;
+            let i = *LUT.get_unchecked(*ptr as usize);
+
+            let mut next = *tries.get_unchecked(trie).get_unchecked(i as usize);
+            if next == 0 {
+                next = tries_len;
+                tries_len += 1;
+            }
+            *tries.get_unchecked_mut(trie).get_unchecked_mut(i as usize) = next;
+            trie = next as usize;
+
+            ptr = ptr.add(1);
+            if ptr == end {
+                break;
+            }
+        }
+
+        *tries_end.get_unchecked_mut(trie) = true;
+
+        ptr = ptr.add(2);
+        if *ptr.sub(2) == b'\n' {
+            break;
+        }
+    }
+
+    let mut lines = [0; 400];
+    let mut lines_len = 0;
+    let mut offset = ptr.offset_from(input.as_ptr()) as usize - 1;
+    while offset + 32 < input.len() {
+        let b = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
+        let mut m = b.simd_eq(u8x32::splat(b'\n')).to_bitmask();
+        while m != 0 {
+            let pos = m.trailing_zeros();
+            m &= !(1 << pos);
+            *lines.get_unchecked_mut(lines_len) = offset + pos as usize + 1;
+            lines_len += 1;
+        }
+        offset += 32;
+    }
+    while offset + 1 < input.len() {
+        if *input.get_unchecked(offset) == b'\n' {
+            *lines.get_unchecked_mut(lines_len) = offset + 1;
+            lines_len += 1;
+        }
+        offset += 1;
+    }
+
+    let sum = std::sync::atomic::AtomicU64::new(0);
+    let size = 400 / 16;
+    par::par(|idx| {
+        let chunk = lines.get_unchecked(size * idx..size * (idx + 1));
+        let mut count = 0;
+
+        for &offset in chunk {
+            let mut queue = [0; 64];
+            queue[0] = 1;
+            let mut pos = 0;
+
+            let base_ptr = input.as_ptr().add(offset);
+            let mut outer_ptr = base_ptr;
+
+            loop {
+                let n = *queue.get_unchecked(pos);
+
+                if n != 0 {
+                    let mut ptr = outer_ptr;
+                    let mut trie = 0;
+
+                    loop {
+                        let i = *LUT.get_unchecked(*ptr as usize);
+
+                        trie = *tries.get_unchecked(trie).get_unchecked(i) as usize;
+                        if trie == 0 {
+                            break;
+                        }
+                        debug_assert!(trie < tries.len());
+
+                        ptr = ptr.add(1);
+
+                        if *tries_end.get_unchecked(trie) {
+                            *queue.get_unchecked_mut(ptr.offset_from(base_ptr) as usize) += n;
+                        }
+
+                        if *ptr == b'\n' {
+                            break;
+                        }
+                    }
+                }
+
+                pos += 1;
+                outer_ptr = outer_ptr.add(1);
+
+                if *outer_ptr == b'\n' {
+                    count += *queue.get_unchecked(pos);
+                    break;
+                }
+            }
+        }
+
+        sum.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+
+    sum.into_inner()
 }
 
-#[inline]
-pub fn run(s: &str) -> u32 {
-    unsafe { inner1(s.as_bytes()) }
-}
+mod par {
+    use std::sync::atomic::{AtomicPtr, Ordering};
 
-#[inline]
-pub fn part2(s: &str) -> u64 {
-    unsafe { inner2(s.as_bytes()) }
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    fn wait() {
+        for i in 1..NUM_THREADS {
+            loop {
+                let ptr = WORK[i].0.load(Ordering::Acquire);
+                if ptr.is_null() {
+                    break;
+                }
+                std::hint::spin_loop();
+            }
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait();
+    }
 }

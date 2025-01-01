@@ -103,6 +103,7 @@ unsafe fn inner_part2(input: &str) -> u64 {
     let mut offset = 0;
 
     let mut ptr = input.as_ptr().wrapping_sub(1);
+    // let end = ptr.add(input.len());
 
     loop {
         ptr = ptr.add(3);

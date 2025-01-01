@@ -1,6 +1,26 @@
 // Original by: giooschi
+#![allow(unused_attributes)]
+#![allow(static_mut_refs)]
+#![feature(portable_simd)]
+#![feature(avx512_target_feature)]
+#![feature(slice_ptr_get)]
+#![feature(array_ptr_get)]
+#![feature(core_intrinsics)]
+#![feature(int_roundings)]
+#![feature(fn_align)]
+
+use std::simd::prelude::*;
+
 pub fn run(input: &str) -> i64 {
     part1(input) as i64
+}
+
+pub fn part1(input: &str) -> u64 {
+    unsafe { inner_part1(input) }
+}
+
+pub fn part2(input: &str) -> u64 {
+    unsafe { inner_part2(input) }
 }
 
 static LT_VALID: [bool; 256] = {
@@ -29,26 +49,62 @@ fn gt_valid(diff: i8) -> bool {
     GT_VALID[diff as u8 as usize]
 }
 
-pub fn part1(input: &str) -> u32 {
-    let mut input = input.as_bytes().iter();
+pub unsafe fn inner_part1(input: &str) -> u64 {
+    let input = input.as_bytes();
 
-    unsafe fn read(input: &mut std::slice::Iter<u8>) -> (i8, u8) {
-        let d1 = *input.next().unwrap_unchecked();
-        let mut d2 = *input.next().unwrap_unchecked();
-
-        let mut n = d1 - b'0';
-
-        if d2 >= b'0' {
-            n = 10 * n + (d2 - b'0');
-            d2 = *input.next().unwrap_unchecked();
+    let mut lines = [0; 1000];
+    let mut lines_len = 1;
+    let mut offset = 0;
+    while offset + 32 < input.len() {
+        let b = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
+        let mut m = b.simd_eq(u8x32::splat(b'\n')).to_bitmask();
+        while m != 0 {
+            let pos = m.trailing_zeros();
+            m &= !(1 << pos);
+            *lines.get_unchecked_mut(lines_len) = offset + pos as usize + 1;
+            lines_len += 1;
         }
-
-        (n as i8, d2)
+        offset += 32;
+    }
+    while offset + 1 < input.len() {
+        if *input.get_unchecked(offset) == b'\n' {
+            *lines.get_unchecked_mut(lines_len) = offset + 1;
+            lines_len += 1;
+        }
+        offset += 1;
     }
 
-    let mut count = 0;
-    unsafe {
-        while !input.as_slice().is_empty() {
+    let mut lens = [1000 / par1::NUM_THREADS; par1::NUM_THREADS];
+    for i in 0..1000 % par1::NUM_THREADS {
+        lens[i] += 1;
+    }
+    let mut poss = [0; par1::NUM_THREADS + 1];
+    for i in 0..par1::NUM_THREADS {
+        poss[i + 1] = poss[i] + lens[i];
+    }
+
+    let acc = std::sync::atomic::AtomicU64::new(0);
+    par1::par(|idx| {
+        unsafe fn read(input: &mut std::slice::Iter<u8>) -> (i8, u8) {
+            let d1 = *input.next().unwrap_unchecked();
+            let mut d2 = *input.next().unwrap_unchecked();
+
+            let mut n = d1 - b'0';
+
+            if d2 >= b'0' {
+                n = 10 * n + (d2 - b'0');
+                d2 = *input.next().unwrap_unchecked();
+            }
+
+            (n as i8, d2)
+        }
+
+        let mut count = 0;
+
+        for i in poss[idx]..poss[idx + 1] {
+            let l = *lines.get_unchecked(i);
+            let mut input = input.get_unchecked(l..).iter();
+
             let (n1, _) = read(&mut input);
             let (n2, c2) = read(&mut input);
 
@@ -89,39 +145,72 @@ pub fn part1(input: &str) -> u32 {
                 }
             }
 
-            if ctrl != b'\n' {
-                while *input.next().unwrap_unchecked() != b'\n' {}
-            }
-
             if valid {
                 count += 1;
             }
         }
-    }
 
-    count
+        acc.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+    acc.into_inner()
 }
 
-pub fn part2(input: &str) -> u32 {
-    let mut input = input.as_bytes().iter();
+pub unsafe fn inner_part2(input: &str) -> u64 {
+    let input = input.as_bytes();
 
-    unsafe fn read(input: &mut std::slice::Iter<u8>) -> (i8, u8) {
-        let d1 = *input.next().unwrap_unchecked();
-        let mut d2 = *input.next().unwrap_unchecked();
-
-        let mut n = d1 - b'0';
-
-        if d2 >= b'0' {
-            n = 10 * n + (d2 - b'0');
-            d2 = *input.next().unwrap_unchecked();
+    let mut lines = [0; 1000];
+    let mut lines_len = 1;
+    let mut offset = 0;
+    while offset + 32 < input.len() {
+        let b = u8x32::from_slice(input.get_unchecked(offset..offset + 32));
+        let mut m = b.simd_eq(u8x32::splat(b'\n')).to_bitmask();
+        while m != 0 {
+            let pos = m.trailing_zeros();
+            m &= !(1 << pos);
+            *lines.get_unchecked_mut(lines_len) = offset + pos as usize + 1;
+            lines_len += 1;
         }
-
-        (n as i8, d2)
+        offset += 32;
+    }
+    while offset + 1 < input.len() {
+        if *input.get_unchecked(offset) == b'\n' {
+            *lines.get_unchecked_mut(lines_len) = offset + 1;
+            lines_len += 1;
+        }
+        offset += 1;
     }
 
-    let mut count = 0;
-    unsafe {
-        while !input.as_slice().is_empty() {
+    let mut lens = [1000 / par2::NUM_THREADS; par2::NUM_THREADS];
+    for i in 0..1000 % par2::NUM_THREADS {
+        lens[i] += 1;
+    }
+    let mut poss = [0; par2::NUM_THREADS + 1];
+    for i in 0..par2::NUM_THREADS {
+        poss[i + 1] = poss[i] + lens[i];
+    }
+
+    let acc = std::sync::atomic::AtomicU64::new(0);
+    par2::par(|idx| {
+        unsafe fn read(input: &mut std::slice::Iter<u8>) -> (i8, u8) {
+            let d1 = *input.next().unwrap_unchecked();
+            let mut d2 = *input.next().unwrap_unchecked();
+
+            let mut n = d1 - b'0';
+
+            if d2 >= b'0' {
+                n = 10 * n + (d2 - b'0');
+                d2 = *input.next().unwrap_unchecked();
+            }
+
+            (n as i8, d2)
+        }
+
+        let mut count = 0;
+
+        for i in poss[idx]..poss[idx + 1] {
+            let l = *lines.get_unchecked(i);
+            let mut input = input.get_unchecked(l..).iter();
+
             let (n1, _) = read(&mut input);
             let (n2, c2) = read(&mut input);
 
@@ -239,15 +328,150 @@ pub fn part2(input: &str) -> u32 {
                 }
             }
 
-            if ctrl != b'\n' {
-                while *input.next().unwrap_unchecked() != b'\n' {}
-            }
-
             if lt_st != 4 || gt_st != 4 {
                 count += 1;
             }
         }
+
+        acc.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+    acc.into_inner()
+}
+
+mod par1 {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
     }
 
-    count
+    #[inline(always)]
+    pub fn wait(i: usize) {
+        loop {
+            let ptr = WORK[i].0.load(Ordering::Acquire);
+            if ptr.is_null() {
+                break;
+            }
+            std::hint::spin_loop();
+        }
+    }
+
+    #[inline(always)]
+    fn wait_all() {
+        for i in 1..NUM_THREADS {
+            wait(i);
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait_all();
+    }
+}
+
+mod par2 {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    pub fn wait(i: usize) {
+        loop {
+            let ptr = WORK[i].0.load(Ordering::Acquire);
+            if ptr.is_null() {
+                break;
+            }
+            std::hint::spin_loop();
+        }
+    }
+
+    #[inline(always)]
+    fn wait_all() {
+        for i in 1..NUM_THREADS {
+            wait(i);
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait_all();
+    }
 }

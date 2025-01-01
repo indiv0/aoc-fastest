@@ -11,8 +11,6 @@
 use std::arch::x86_64::*;
 use std::simd::prelude::*;
 
-use rayon::prelude::*;
-
 pub fn run(input: &str) -> i64 {
     part2(input) as i64
 }
@@ -97,59 +95,124 @@ unsafe fn inner_part2(input: &str) -> u64 {
         offset += 1;
     }
 
-    lines
-        .par_chunks(400 / 16)
-        .with_max_len(1)
-        .map(|chunk| {
-            let mut count = 0;
+    let sum = std::sync::atomic::AtomicU64::new(0);
+    let size = 400 / 16;
+    par::par(|idx| {
+        let chunk = lines.get_unchecked(size * idx..size * (idx + 1));
+        let mut count = 0;
 
-            for &offset in chunk {
-                let mut queue = [0; 64];
-                queue[0] = 1;
-                let mut pos = 0;
+        for &offset in chunk {
+            let mut queue = [0; 64];
+            queue[0] = 1;
+            let mut pos = 0;
 
-                let base_ptr = input.as_ptr().add(offset);
-                let mut outer_ptr = base_ptr;
+            let base_ptr = input.as_ptr().add(offset);
+            let mut outer_ptr = base_ptr;
 
-                loop {
-                    let n = *queue.get_unchecked(pos);
+            loop {
+                let n = *queue.get_unchecked(pos);
 
-                    if n != 0 {
-                        let mut ptr = outer_ptr;
-                        let mut trie = 0;
+                if n != 0 {
+                    let mut ptr = outer_ptr;
+                    let mut trie = 0;
 
-                        loop {
-                            let i = *LUT.get_unchecked(*ptr as usize);
+                    loop {
+                        let i = *LUT.get_unchecked(*ptr as usize);
 
-                            trie = *tries.get_unchecked(trie).get_unchecked(i) as usize;
-                            if trie == 0 {
-                                break;
-                            }
-                            debug_assert!(trie < tries.len());
+                        trie = *tries.get_unchecked(trie).get_unchecked(i) as usize;
+                        if trie == 0 {
+                            break;
+                        }
+                        debug_assert!(trie < tries.len());
 
-                            ptr = ptr.add(1);
+                        ptr = ptr.add(1);
 
-                            if *tries_end.get_unchecked(trie) {
-                                *queue.get_unchecked_mut(ptr.offset_from(base_ptr) as usize) += n;
-                            }
+                        if *tries_end.get_unchecked(trie) {
+                            *queue.get_unchecked_mut(ptr.offset_from(base_ptr) as usize) += n;
+                        }
 
-                            if *ptr == b'\n' {
-                                break;
-                            }
+                        if *ptr == b'\n' {
+                            break;
                         }
                     }
+                }
 
-                    pos += 1;
-                    outer_ptr = outer_ptr.add(1);
+                pos += 1;
+                outer_ptr = outer_ptr.add(1);
 
-                    if *outer_ptr == b'\n' {
-                        count += *queue.get_unchecked(pos);
-                        break;
-                    }
+                if *outer_ptr == b'\n' {
+                    count += *queue.get_unchecked(pos);
+                    break;
                 }
             }
+        }
 
-            count
-        })
-        .sum()
+        sum.fetch_add(count, std::sync::atomic::Ordering::Relaxed);
+    });
+
+    sum.into_inner()
+}
+
+mod par {
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    pub const NUM_THREADS: usize = 16;
+
+    #[repr(align(64))]
+    struct CachePadded<T>(T);
+
+    static mut INIT: bool = false;
+
+    static WORK: [CachePadded<AtomicPtr<()>>; NUM_THREADS] =
+        [const { CachePadded(AtomicPtr::new(std::ptr::null_mut())) }; NUM_THREADS];
+
+    #[inline(always)]
+    fn submit<F: Fn(usize)>(f: &F) {
+        unsafe {
+            if !INIT {
+                INIT = true;
+                for idx in 1..NUM_THREADS {
+                    thread_run(idx, f);
+                }
+            }
+        }
+
+        for i in 1..NUM_THREADS {
+            WORK[i].0.store(f as *const F as *mut (), Ordering::Release);
+        }
+    }
+
+    #[inline(always)]
+    fn wait() {
+        for i in 1..NUM_THREADS {
+            loop {
+                let ptr = WORK[i].0.load(Ordering::Acquire);
+                if ptr.is_null() {
+                    break;
+                }
+                std::hint::spin_loop();
+            }
+        }
+    }
+
+    fn thread_run<F: Fn(usize)>(idx: usize, _f: &F) {
+        _ = std::thread::Builder::new().spawn(move || unsafe {
+            let work = WORK.get_unchecked(idx);
+
+            loop {
+                let data = work.0.load(Ordering::Acquire);
+                if !data.is_null() {
+                    (&*data.cast::<F>())(idx);
+                    work.0.store(std::ptr::null_mut(), Ordering::Release);
+                }
+                std::hint::spin_loop();
+            }
+        });
+    }
+
+    pub unsafe fn par<F: Fn(usize)>(f: F) {
+        submit(&f);
+        f(0);
+        wait();
+    }
 }

@@ -39,8 +39,8 @@ unsafe fn inner_part1(input: &str) -> u32 {
     let mut seen_h = [0u64; (2 * 141 * 142 + 63) / 64];
     let mut seen_v = [0u64; (2 * 141 * 142 + 63) / 64];
 
-    let mut queue_h = [MaybeUninit::uninit(); 128];
-    let mut queue_v = [MaybeUninit::uninit(); 128];
+    let mut queue_h = [MaybeUninit::uninit(); 256];
+    let mut queue_v = [MaybeUninit::uninit(); 256];
 
     let mut queue_h_len = 1;
     let mut queue_v_len = 1;

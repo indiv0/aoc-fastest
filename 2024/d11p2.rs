@@ -65,166 +65,46 @@ fn make_d11_lut() {
     }
 }
 
+macro_rules! solve {
+    ($input:ident, $lut:literal, $ty:ident) => {{
+        let lut = LUT.as_ptr();
+
+        let input = $input.as_bytes();
+        let mut ptr = input.as_ptr();
+        let end = ptr.add(input.len());
+
+        let mut tot = 0;
+
+        loop {
+            let mut n = (*ptr - b'0') as usize;
+            ptr = ptr.add(1);
+
+            loop {
+                let d = (*ptr).wrapping_sub(b'0');
+                ptr = ptr.add(1);
+                if d >= 10 {
+                    break;
+                }
+                n = 10 * n + d as usize;
+            }
+
+            tot += lut.add(n).read_unaligned();
+
+            if ptr == end {
+                break tot;
+            }
+        }
+    }};
+}
+
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part1(input: &str) -> u32 {
-    type Ty = u64;
-
-    let mut tot = 0u64;
-
-    let lut = LUT.as_ptr().cast::<Ty>();
-
-    #[rustfmt::skip]
-    core::arch::asm!(
-    "2:",
-        "movzx   {n}, byte ptr [{ptr}]",
-        "movzx   {d}, byte ptr [{ptr} + 1]",
-        "sub     {n}, {b0}",
-        "sub     {d}, {b0}",
-        "add     {ptr}, 2",
-        "cmp     {d}, 9",
-        "ja      4f",
-        
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-        
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-    "4:",
-        "add     {tot}, qword ptr [{lut} + {s}*{n}]",
-        "cmp     {ptr}, {end}",
-        "jne     2b",
-        ptr = in(reg) input.as_ptr(),
-        end = in(reg) input.as_ptr().add(input.len()),
-        lut = in(reg) lut,
-        tot = inout(reg) tot,
-        n = out(reg) _,
-        d = out(reg) _,
-        s = const std::mem::size_of::<Ty>(),
-        b0 = const b'0' as u64
-    );
-
-    tot as u32
+    solve!(input, "/d11p1.lut", u32) as u32
 }
 
 #[target_feature(enable = "popcnt,avx2,ssse3,bmi1,bmi2,lzcnt")]
 #[cfg_attr(avx512_available, target_feature(enable = "avx512vl"))]
 unsafe fn inner_part2(input: &str) -> u64 {
-    type Ty = u64;
-
-    let mut tot = 0;
-
-    let lut = LUT.as_ptr().cast::<Ty>();
-
-    #[rustfmt::skip]
-    core::arch::asm!(
-    "2:",
-        "movzx   {n}, byte ptr [{ptr}]",
-        "movzx   {d}, byte ptr [{ptr} + 1]",
-        "sub     {n}, {b0}",
-        "sub     {d}, {b0}",
-        "add     {ptr}, 2",
-        "cmp     {d}, 9",
-        "ja      4f",
-        
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-        "cmp     {d}, 9",
-        "ja      4f",
-        
-        "lea     {n}, [{n} + 4*{n}]",
-        "lea     {n}, [{d} + 2*{n}]",
-        "movzx   {d}, byte ptr [{ptr}]",
-        "sub     {d}, {b0}",
-        "inc     {ptr}",
-    "4:",
-        "add     {tot}, qword ptr [{lut} + {s}*{n}]",
-        "cmp     {ptr}, {end}",
-        "jne     2b",
-        ptr = in(reg) input.as_ptr(),
-        end = in(reg) input.as_ptr().add(input.len()),
-        lut = in(reg) lut,
-        tot = inout(reg) tot,
-        n = out(reg) _,
-        d = out(reg) _,
-        s = const std::mem::size_of::<Ty>(),
-        b0 = const b'0' as u64
-    );
-
-    tot
+    solve!(input, "/d11p2.lut", u64)
 }
