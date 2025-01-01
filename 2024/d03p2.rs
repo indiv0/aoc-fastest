@@ -1,279 +1,243 @@
-// Original by: giooschi
-#![allow(unused_attributes)]
-#![feature(portable_simd)]
+// Original by: ameo
+#![feature(array_chunks, array_windows, duration_constructors, portable_simd)]
 
-use std::simd::cmp::SimdPartialEq;
-use std::simd::u8x64;
+use std::{
+    fmt::Display,
+    simd::{cmp::SimdPartialEq, u8x32, u8x64},
+};
 
-pub fn run(input: &str) -> i64 {
-    part2(input) as i64
+// pub const INPUT: &'static [u8] = include_bytes!("../inputs/day3.txt");
+
+fn parse_digit(c: u8) -> usize {
+    (c - 48) as usize
 }
 
-pub fn part1(input: &str) -> u32 {
-    let mut iter = input.as_bytes().iter();
-
-    #[inline(always)]
-    unsafe fn search<const B: bool>(input: &[u8], sum: &mut u32, mut mask: u64) {
-        while mask != 0 {
-            let pos = mask.trailing_zeros();
-            mask &= !(1 << pos);
-
-            let mut i = pos as usize + 1;
-            let mut l = 0;
-            while (!B || i < input.len()) && input.get_unchecked(i).wrapping_sub(b'0') <= 9 {
-                l = 10 * l + input.get_unchecked(i).wrapping_sub(b'0') as u32;
-                i += 1;
-            }
-
-            if (B && i >= input.len()) || *input.get_unchecked(i) != b',' {
-                continue;
-            }
-            i += 1;
-
-            let mut r = 0;
-            while (!B || i < input.len()) && input.get_unchecked(i).wrapping_sub(b'0') <= 9 {
-                r = 10 * r + input.get_unchecked(i).wrapping_sub(b'0') as u32;
-                i += 1;
-            }
-
-            if (B && i >= input.len()) || *input.get_unchecked(i) != b')' {
-                continue;
-            }
-
-            *sum += l * r;
+#[inline(always)]
+fn add_num(digits: &[usize]) -> usize {
+    match digits.len() {
+        0 => unreachable!(),
+        1 => unsafe { *digits.get_unchecked(0) },
+        2 => 10 * unsafe { *digits.get_unchecked(0) } + unsafe { *digits.get_unchecked(1) },
+        3 => {
+            100 * unsafe { *digits.get_unchecked(0) }
+                + 10 * unsafe { *digits.get_unchecked(1) }
+                + unsafe { *digits.get_unchecked(2) }
         }
+        _ => unreachable!(),
     }
-
-    let mut sum = 0;
-
-    while iter.len() >= 72 {
-        let bytes = u8x64::from_slice(iter.as_slice());
-
-        let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-        let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-        let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-        let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-
-        let mask = (m << 3) & (u << 2) & (l << 1) & p;
-
-        unsafe { search::<false>(iter.as_slice(), &mut sum, mask) };
-
-        unsafe { iter = iter.as_slice().get_unchecked(61..).iter() };
-    }
-
-    if iter.len() >= 64 {
-        let bytes = u8x64::from_slice(iter.as_slice());
-
-        let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-        let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-        let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-        let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-
-        let mask = (m << 3) & (u << 2) & (l << 1) & p;
-
-        unsafe { search::<true>(iter.as_slice(), &mut sum, mask) };
-
-        unsafe { iter = iter.as_slice().get_unchecked(61..).iter() };
-    }
-
-    {
-        let len = iter.len();
-        let iter = unsafe { input.as_bytes().get_unchecked(input.len() - 64..).iter() };
-
-        let bytes = u8x64::from_slice(iter.as_slice());
-
-        let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-        let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-        let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-        let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-
-        let mask = (m << 3) & (u << 2) & (l << 1) & p & !((1 << (64 + 3 - len)) - 1);
-
-        unsafe { search::<true>(iter.as_slice(), &mut sum, mask) };
-    }
-
-    sum
 }
 
-pub fn part2(input: &str) -> u32 {
-    let mut iter = input.as_bytes().iter();
+const MUL: [u8; 4] = ['m' as u8, 'u' as u8, 'l' as u8, '(' as u8];
+const DONT: [u8; 7] = [
+    'd' as u8, 'o' as u8, 'n' as u8, '\'' as u8, 't' as u8, '(' as u8, ')' as u8,
+];
+const DO: [u8; 4] = ['d' as u8, 'o' as u8, '(' as u8, ')' as u8];
+// shortest valid mul is `mul(1,1)` so 8 chars
+const MIN_VALID_MUL_LEN: usize = 8;
 
-    #[inline(always)]
-    unsafe fn search<const B: bool>(
-        iter: std::slice::Iter<u8>,
-        sum: &mut u32,
-        enabled: &mut bool,
-        mul_mask: u64,
-        dont_mask: u64,
-    ) -> usize {
-        let mut mul_dont_mask = mul_mask | dont_mask;
+pub fn parse_and_compute<const ENABLE_DO_STATE: bool>(input: &[u8]) -> usize {
+    let mut sum = 0usize;
+    let mut do_state = true;
+    let mut char_ix = 0usize;
 
-        let mut pos = 0;
-
-        while mul_dont_mask != 0 {
-            let iter = iter.as_slice();
-
-            pos = mul_dont_mask.trailing_zeros() as usize;
-            mul_dont_mask &= !(1 << pos);
-
-            if mul_mask & (1 << pos) != 0 {
-                pos += 1;
-
-                let mut l = 0;
-                while (!B || pos < iter.len()) && iter.get_unchecked(pos).wrapping_sub(b'0') <= 9 {
-                    l = 10 * l + iter.get_unchecked(pos).wrapping_sub(b'0') as u32;
-                    pos += 1;
-                }
-
-                if (B && pos >= iter.len()) || *iter.get_unchecked(pos) != b',' {
-                    continue;
-                }
-                pos += 1;
-
-                let mut r = 0;
-                while (!B || pos < iter.len()) && iter.get_unchecked(pos).wrapping_sub(b'0') <= 9 {
-                    r = 10 * r + iter.get_unchecked(pos).wrapping_sub(b'0') as u32;
-                    pos += 1;
-                }
-
-                if (B && pos >= iter.len()) || *iter.get_unchecked(pos) != b')' {
-                    continue;
-                }
-                pos += 1;
-
-                *sum += l * r;
-            } else {
-                *enabled = false;
-                return pos as usize + 1;
-            }
+    'outer: loop {
+        if char_ix >= input.len() - MIN_VALID_MUL_LEN {
+            return sum;
         }
 
-        std::cmp::max(58, pos as usize)
-    }
-
-    let mut sum = 0;
-    let mut enabled = true;
-
-    while iter.len() > 6 {
-        while enabled && iter.len() >= 69 {
-            let bytes = u8x64::from_slice(iter.as_slice());
-
-            let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-            let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-            let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-            let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-            let d = bytes.simd_eq(u8x64::splat(b'd')).to_bitmask();
-            let o = bytes.simd_eq(u8x64::splat(b'o')).to_bitmask();
-            let n = bytes.simd_eq(u8x64::splat(b'n')).to_bitmask();
-            let a = bytes.simd_eq(u8x64::splat(b'\'')).to_bitmask();
-            let t = bytes.simd_eq(u8x64::splat(b't')).to_bitmask();
-            let q = bytes.simd_eq(u8x64::splat(b')')).to_bitmask();
-
-            let mul_mask = (m << 3) & (u << 2) & (l << 1) & p & ((1 << (64 - 3)) - 1);
-            let dont_mask = (d << 6) & (o << 5) & (n << 4) & (a << 3) & (t << 2) & (p << 1) & q;
-
-            let offset = unsafe {
-                search::<false>(iter.clone(), &mut sum, &mut enabled, mul_mask, dont_mask)
+        // For part 2, when the "do" mode is set to "don't", we only care about finding `d` characters.
+        //
+        // Since d's are so much sparser in the inputs than m's, there's a decent chance it will be more
+        // than 32 chars ahead and the overhead of reading further tends to be worth it.
+        if ENABLE_DO_STATE && !do_state && char_ix < input.len() - (64 + 1) {
+            let vector = unsafe {
+                u8x64::from_slice(std::slice::from_raw_parts(input.as_ptr().add(char_ix), 64))
             };
 
-            unsafe { iter = iter.as_slice().get_unchecked(offset..).iter() };
+            let mask = vector.simd_eq(u8x64::splat('d' as u8));
+            let hit_ix = match mask.first_set() {
+                Some(hit_ix) => hit_ix,
+                None => {
+                    // no hit in the entire window; skip it completely and move on to the next
+                    char_ix += 64;
+                    continue;
+                }
+            };
+
+            char_ix += hit_ix;
         }
+        // Try to find the first relavant start character in the input by checking 32 at a time and then
+        // selecting the index of the first match
+        else if char_ix < input.len() - (32 + 1) {
+            let vector = unsafe {
+                u8x32::from_slice(std::slice::from_raw_parts(input.as_ptr().add(char_ix), 32))
+            };
 
-        if enabled {
-            if iter.len() >= 64 {
-                let bytes = u8x64::from_slice(iter.as_slice());
-
-                let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-                let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-                let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-                let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-                let d = bytes.simd_eq(u8x64::splat(b'd')).to_bitmask();
-                let o = bytes.simd_eq(u8x64::splat(b'o')).to_bitmask();
-                let n = bytes.simd_eq(u8x64::splat(b'n')).to_bitmask();
-                let a = bytes.simd_eq(u8x64::splat(b'\'')).to_bitmask();
-                let t = bytes.simd_eq(u8x64::splat(b't')).to_bitmask();
-                let q = bytes.simd_eq(u8x64::splat(b')')).to_bitmask();
-
-                let mul_mask = (m << 3) & (u << 2) & (l << 1) & p & ((1 << (64 - 3)) - 1);
-                let dont_mask = (d << 6) & (o << 5) & (n << 4) & (a << 3) & (t << 2) & (p << 1) & q;
-
-                let offset = unsafe {
-                    search::<true>(iter.clone(), &mut sum, &mut enabled, mul_mask, dont_mask)
-                };
-
-                unsafe { iter = iter.as_slice().get_unchecked(offset..).iter() };
-            }
-
-            while enabled && iter.len() >= 8 {
-                let len = iter.len();
-                let iter2 = unsafe { input.as_bytes().get_unchecked(input.len() - 64..).iter() };
-                let mask = !((1 << (64 + 3 - len)) - 1);
-
-                let bytes = u8x64::from_slice(iter2.as_slice());
-
-                let m = bytes.simd_eq(u8x64::splat(b'm')).to_bitmask();
-                let u = bytes.simd_eq(u8x64::splat(b'u')).to_bitmask();
-                let l = bytes.simd_eq(u8x64::splat(b'l')).to_bitmask();
-                let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-                let d = bytes.simd_eq(u8x64::splat(b'd')).to_bitmask();
-                let o = bytes.simd_eq(u8x64::splat(b'o')).to_bitmask();
-                let n = bytes.simd_eq(u8x64::splat(b'n')).to_bitmask();
-                let a = bytes.simd_eq(u8x64::splat(b'\'')).to_bitmask();
-                let t = bytes.simd_eq(u8x64::splat(b't')).to_bitmask();
-                let q = bytes.simd_eq(u8x64::splat(b')')).to_bitmask();
-
-                let mul_mask = (m << 3) & (u << 2) & (l << 1) & p & mask;
-                let dont_mask =
-                    (d << 6) & (o << 5) & (n << 4) & (a << 3) & (t << 2) & (p << 1) & q & mask;
-
-                let offset = unsafe {
-                    search::<true>(iter2.clone(), &mut sum, &mut enabled, mul_mask, dont_mask)
-                };
-
-                unsafe { iter = iter2.as_slice().get_unchecked(offset..).iter() };
-            }
-        }
-
-        while !enabled && iter.len() >= 64 {
-            let bytes = u8x64::from_slice(iter.as_slice());
-
-            let d = bytes.simd_eq(u8x64::splat(b'd')).to_bitmask();
-            let o = bytes.simd_eq(u8x64::splat(b'o')).to_bitmask();
-            let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-            let q = bytes.simd_eq(u8x64::splat(b')')).to_bitmask();
-            let do_mask = (d << 3) & (o << 2) & (p << 1) & q;
-
-            if do_mask != 0 {
-                enabled = true;
-
-                let pos = do_mask.trailing_zeros();
-                unsafe { iter = iter.as_slice().get_unchecked(pos as usize + 1..).iter() };
+            // Same as before, if we're keeping track of do/don't state and the do flag is not set, we can
+            // avoid checking for `m` characters entirely and just scan for the next `d`.
+            let combined_mask = if ENABLE_DO_STATE {
+                let d_mask = vector.simd_eq(u8x32::splat('d' as u8));
+                if !do_state {
+                    d_mask
+                } else {
+                    let m_mask = vector.simd_eq(u8x32::splat('m' as u8));
+                    m_mask | d_mask
+                }
             } else {
-                unsafe { iter = iter.as_slice().get_unchecked(61..).iter() };
+                vector.simd_eq(u8x32::splat('m' as u8))
+            };
+            let hit_ix = match combined_mask.first_set() {
+                Some(hit_ix) => hit_ix,
+                None => {
+                    // no hit in the entire window; skip it completely and move on to the next
+                    char_ix += 32;
+                    continue;
+                }
+            };
+
+            char_ix += hit_ix;
+        }
+        // We use char-by-char checks for the remainder of the window
+        else {
+            let mut c = unsafe { *input.get_unchecked(char_ix) };
+            while c != 'm' as u8 && (!ENABLE_DO_STATE || c != 'd' as u8) {
+                char_ix += 1;
+                if char_ix >= input.len() {
+                    return sum;
+                }
+                c = unsafe { *input.get_unchecked(char_ix) };
             }
         }
 
-        if !enabled {
-            let len = iter.len();
-            let iter2 = unsafe { input.as_bytes().get_unchecked(input.len() - 64..).iter() };
-            let mask = !((1 << (64 + 3 - len)) - 1);
+        // don't bother parsing out this mul if we're not doing
+        if (!ENABLE_DO_STATE || do_state) && input.get(char_ix..char_ix + MUL.len()) == Some(&MUL) {
+            char_ix += MUL.len();
 
-            let bytes = u8x64::from_slice(iter2.as_slice());
+            // try to fastpath consume nums
+            let first_num;
+            let second_num;
 
-            let d = bytes.simd_eq(u8x64::splat(b'd')).to_bitmask();
-            let o = bytes.simd_eq(u8x64::splat(b'o')).to_bitmask();
-            let p = bytes.simd_eq(u8x64::splat(b'(')).to_bitmask();
-            let q = bytes.simd_eq(u8x64::splat(b')')).to_bitmask();
-            let do_mask = (d << 3) & (o << 2) & (p << 1) & q & mask;
+            let mut d0;
+            let mut d1;
+            let mut d2;
 
-            if do_mask != 0 {
-                enabled = true;
-
-                let pos = do_mask.trailing_zeros();
-                unsafe { iter = iter2.as_slice().get_unchecked(pos as usize + 1..).iter() };
+            // first char after `mul(` must be a digit
+            let mut c = unsafe { *input.get_unchecked(char_ix) };
+            char_ix += 1;
+            if c >= '0' as u8 && c <= '9' as u8 {
+                d0 = parse_digit(c);
+            } else {
+                continue;
             }
+
+            // next char `mul(1_` can be either digit or comma
+            c = unsafe { *input.get_unchecked(char_ix) };
+            char_ix += 1;
+
+            if c >= '0' as u8 && c <= '9' as u8 {
+                d1 = parse_digit(c);
+
+                c = unsafe { *input.get_unchecked(char_ix) };
+                char_ix += 1;
+
+                // next char `mul(12_` can also be either digit or comma
+                if c >= '0' as u8 && c <= '9' as u8 {
+                    d2 = parse_digit(c);
+
+                    c = unsafe { *input.get_unchecked(char_ix) };
+                    char_ix += 1;
+
+                    // next char `mul(123_` MUST be a comma if this mul is valid
+                    if c != ',' as u8 {
+                        continue 'outer;
+                    }
+
+                    first_num = add_num(&[d0, d1, d2]);
+                } else if c == ',' as u8 {
+                    first_num = add_num(&[d0, d1]);
+                } else {
+                    continue 'outer;
+                }
+            } else if c == ',' as u8 {
+                first_num = d0;
+            } else {
+                continue 'outer;
+            }
+
+            c = unsafe { *input.get_unchecked(char_ix) };
+            char_ix += 1;
+
+            // next character `mul(123,_` must be a digit
+            if c >= '0' as u8 && c <= '9' as u8 {
+                d0 = parse_digit(c);
+            } else {
+                continue;
+            }
+
+            // finish parsing second arg.  Assuming that args have at most 3 chars, so take at most two
+            // more digits followed by a `)`
+
+            c = unsafe { *input.get_unchecked(char_ix) };
+            char_ix += 1;
+
+            // next character `mul(123,1_` can be either digit or `)`
+            if c >= '0' as u8 && c <= '9' as u8 {
+                d1 = parse_digit(c);
+
+                c = unsafe { *input.get_unchecked(char_ix) };
+                char_ix += 1;
+
+                // next char `mul(123,12_` can also be either digit or `)`
+                if c >= '0' as u8 && c <= '9' as u8 {
+                    d2 = parse_digit(c);
+
+                    c = unsafe { *input.get_unchecked(char_ix) };
+                    char_ix += 1;
+
+                    // next char `mul(123,123_` MUST be a `)` if this mul is valid
+                    if c != ')' as u8 {
+                        continue 'outer;
+                    }
+
+                    second_num = add_num(&[d0, d1, d2]);
+                } else if c == ')' as u8 {
+                    second_num = add_num(&[d0, d1]);
+                } else {
+                    continue 'outer;
+                }
+            } else if c == ')' as u8 {
+                second_num = d0;
+            } else {
+                continue 'outer;
+            }
+
+            sum += first_num * second_num;
+        } else if ENABLE_DO_STATE
+            && do_state
+            && input.get(char_ix..char_ix + DONT.len()) == Some(&DONT)
+        {
+            do_state = false;
+            char_ix += DONT.len();
+        } else if ENABLE_DO_STATE
+            && !do_state
+            && input.get(char_ix..char_ix + DO.len()) == Some(&DO)
+        {
+            do_state = true;
+            char_ix += DO.len();
+        } else {
+            char_ix += 1;
         }
     }
+}
 
-    sum
+// pub fn solve() {
+//   let out = parse_and_compute::<false>(INPUT);
+//   println!("Part 1: {out}");
+
+//   let out = parse_and_compute::<true>(INPUT);
+//   println!("Part 2: {out}");
+// }
+
+pub fn run(input: &[u8]) -> impl Display {
+    parse_and_compute::<true>(input)
 }
