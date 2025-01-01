@@ -66,15 +66,21 @@ have their code displayed here.
 
 # Further Reading
 
-In-depth explanations of these topics would be super helpful. I hope to some day write those explanations myself. In the meantime check out these resources:
+IMO the best way to learn is to participate, which is why I highly encourage people to try to optimize AoC solutions themselves. It's a **fantastic** way to learn SIMD. If you decide to do so, absolutely join the [Rust Programming Language Community discord server](https://discord.gg/rust-lang-community)! It's a wonderful community with incredibly talented and knowledgeable folks who are happy to help you optimize. I've learned about topics like instruction pipelines, cache misses, and SIMD just by following the discussions there!
+
+In-depth explanations of these topics would be super helpful. I hope to some day write those explanations myself.
+
+In the meantime, if you would like a more in-depth explanation of some of the optimization techniques used, I highly recommend you check out this article by ameo (one of our participants). It covers the process they used to optimize their solution for Day 9 Part 2, and how they got it to the top of our leaderboard. The article provides incredible information on the process of both high-level and micro optimization:
 
 - [Optimizing Advent of Code D9P2 with High-Performance Rust](https://cprimozic.net/blog/optimizing-advent-of-code-2024/)
+
+Also check out the following:
+
 - [Optimising my Rust solutions for Advent of Code ](https://nindalf.com/posts/optimising-rust/)
 - [500 ⭐ in less than a second (Comment)](https://old.reddit.com/r/adventofcode/comments/1hlyocd/500_in_less_than_a_second/m3pyxdk/)
 - [500 ⭐ in less than a second (Repo)](https://github.com/maneatingape/advent-of-code-rust)
 - [One Billion Row Challenge](https://curiouscoding.nl/posts/1brc/)
 
-IMO the best way to learn is to participate, which is why I highly encourage people to try to optimize AoC solutions themselves. It's a **fantastic** way to learn SIMD. If you decide to do so, absolutely join the Rust Programming Language Community discord server! It's a wonderful community with incredibly talented and knowledgeable folks who are happy to help you optimize. I've learned about topics like instruction pipelines, cache misses, and SIMD just by following the discussions there!
 
 # Credits
 
