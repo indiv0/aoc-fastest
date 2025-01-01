@@ -2,6 +2,15 @@
 
 *Check below for resources and optimization guides!*
 
+## Quick Links to Solutions
+
+- [D4P2 -- **Shortest Overall**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d04p2.rs)
+- [D17P2 -- **Fastest; LUTs + ASM**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d17p2.rs)
+- [D17P1 -- **Shortest w/ X86_64 Intrinsics**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d17p1.rs)
+- [D9P2 - **Most Documented**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d09p2.rs)
+
+## Results
+
 here's the total of the fastest times for each day so far:
 ```
 day | part |    time | user            | source available
