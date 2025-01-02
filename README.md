@@ -2,7 +2,7 @@
 
 *Check below for resources and optimization guides!*
 
-## Quick Links to Solutions
+#### Quick Links to Solutions
 
 - [D9P2 - **Most Documented**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d09p2.rs)
 - [D4P2 -- **Shortest Overall**](https://github.com/indiv0/aoc-fastest/blob/c3a2c3fa992441a481e6c15927b2cca28d715040/2024/d04p2.rs)
@@ -94,6 +94,11 @@ Also check out the following:
 
 # Credits
 
+- Thank you to the members of the `Rust Programming Language Community` and `Serenity-rs` Discord servers and everyone else who participated in the challenge!
+- Thank you to Eric Wastl for hosting AoC every year!
+- Thank you to [Noxim](https://github.com/noxime) for writing the original version of our [benchmark bot](https://github.com/indiv0/ferris-elf).
+- Extra special thank you to [yuyuko](https://github.com/ultrabear), [bend-n](https://github.com/bend-n/), and [giooschi](https://github.com/SkiFire13/) for their help in maintaining and improving our benchmark bot.
+
 This repo contains code/optimizations from the following authors:
 
 - giooschi/skifire13: https://github.com/SkiFire13
@@ -107,8 +112,23 @@ This repo contains code/optimizations from the following authors:
 
 Thank you so much to these talented individuals for participating in AoC with us!
 I highly encourage you to checkout their repos for more details and examples.
-These users are incredibly talented at what they do.
-Thank you to everyone who particpated as well, even if your submissions did not end up on the top spots of the leaderboard!
+These people are incredibly talented at what they do.
 
 This repo contains code submitted to the https://github.com/indiv0/ferris-elf bot, by multiple users.
 Code is only included in this repo if the authors have explicitly provided permission to post their code here, so some solutions may not be present.
+
+# Background
+
+This year, some members of the [Rust Programming Language Community Server](https://discord.gg/rust-lang-community) on Discord set out to solve AoC in under 1ms. I'm pleased to announce that through the use of LUTs, SIMD, more-than-questionable `unsafe`, assertions, LLVM intrinsics, and even some inline ASM that goal has been reached!
+
+If you are interested, join us in #advent-of-code-2024 on the [Discord server](https://discord.gg/rust-lang-community) for further discussion :)
+
+# Context/Caveats
+
+- All submissions were run on the same hardware (Ryzen 5950X) to ensure consistency, with the same compiler flags and features available. This was on rustc nightly (updated throughout the course of the contest), and with CPU speed capped at 3400 MHz with boost clock disabled.
+- AVX-512 was not available on the machine so none (?) of the solutions utilize that particular set of accelerated instructions, but there is *plenty* of other SIMD in use.
+- All submissions were run against the same inputs to ensure consistency.
+- Caching anything that has been fed with input was not allowed to prevent cheating and/or trivial solutions like `Map<Input, Output>`.
+- For the same reason, inputs were not directly available to the participants, and were not provided at compile-time.
+- Participants were allowed to use compile-time tricks in their answers. Due to limitations in the benchmark bot, the runtime of these optimizations could not be measured. This was considered acceptable as the compiled binaries were expected to otherwise work correctly for arbitrary inputs. This means that participants are allowed to use look-up tables (LUTs) in their answers, but those LUTs are expected to work for arbitrary inputs, not just specific ones.
+- I/O is trivial, and was thus not measured as part of the benchmark. That is, participants were provided with an `&str` or `&[u8]` input (their choice) and expected to provide an `impl Display` as part of their result. Therefore, *input parsing was measured*.
